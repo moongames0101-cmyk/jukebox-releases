@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VYBE Control</title>
+<style>
+  :root { --night: #0a0716; --raised: #1e1636; --line: rgba(206,190,255,.14); --text: #f4f1ff; --mist: rgba(236,230,255,.72); --dim: rgba(236,230,255,.5); --lilac: #b58cff; --grad: linear-gradient(100deg, #9a3dff, #6a5cff 55%, #2b8cff); }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; min-height: 100%; background: var(--night); color: var(--text); }
+  body { font: 16px/1.5 system-ui, -apple-system, Roboto, sans-serif; background: radial-gradient(90% 45% at 50% 12%, rgba(106,92,255,.3), transparent 70%), var(--night); min-height: 100vh; display: flex; flex-direction: column; padding: 56px 24px 28px; }
+  button, input { font: inherit; color: inherit; }
+  button { border: 0; cursor: pointer; }
+  .wordmark { width: 112px; height: 20px; overflow: visible; filter: drop-shadow(-1px 0 5px rgba(154,61,255,.6)) drop-shadow(1px 0 5px rgba(43,140,255,.6)); }
+  h1 { font-size: 30px; line-height: 1.1; letter-spacing: -.04em; font-weight: 800; margin: 34px 0 0; }
+  p { margin: 10px 0 0; color: var(--mist); }
+  .note { margin-top: 18px; padding: 12px 14px; border-radius: 14px; background: rgba(255,179,92,.1); border: 1px solid rgba(255,179,92,.3); color: #ffd9a8; font-size: 15px; }
+  .steps { margin: 26px 0 0; padding: 0; list-style: none; counter-reset: s; }
+  .steps li { position: relative; padding: 0 0 14px 40px; color: var(--mist); font-size: 15px; }
+  .steps li::before { counter-increment: s; content: counter(s); position: absolute; left: 0; top: -1px; width: 26px; height: 26px; border-radius: 50%; background: var(--raised); color: var(--lilac); font-weight: 700; font-size: 14px; display: grid; place-items: center; }
+  .steps b { color: var(--text); font-weight: 600; }
+  .grow { flex: 1; }
+  .primary { width: 100%; height: 60px; border-radius: 18px; background: var(--grad); color: #fff; font-weight: 700; font-size: 18px; box-shadow: 0 14px 34px rgba(106,92,255,.45); display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .primary svg { width: 24px; height: 24px; }
+  .secondary { width: 100%; height: 52px; margin-top: 10px; border-radius: 16px; background: var(--raised); font-weight: 700; }
+  details { margin-top: 16px; }
+  summary { color: var(--lilac); font-weight: 600; cursor: pointer; padding: 6px 0; list-style: none; text-align: center; }
+  summary::-webkit-details-marker { display: none; }
+  .type { display: flex; gap: 8px; margin-top: 10px; }
+  .type input { flex: 1; min-width: 0; height: 52px; padding: 0 16px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--raised); outline: none; font-size: 17px; }
+  .type input:focus { border-color: #7a5cff; }
+  .type button { height: 52px; padding: 0 18px; border-radius: 14px; background: var(--grad); color: #fff; font-weight: 700; }
+  .hint { font-size: 13.5px; color: var(--dim); text-align: center; }
+</style>
+</head>
+<body>
+  <svg class="wordmark" viewBox="-8 -10 720 120" role="img" aria-label="VYBE"><defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#e2dcf7"/><stop offset="1" stop-color="#a59fcf"/></linearGradient></defs><g fill="none" stroke="url(#s)" stroke-width="13" stroke-miterlimit="6"><path d="M6 6 L75 94 L144 6"/><path d="M200 6 L265 52 L330 6 M265 52 V100"/><path d="M396 0 V100 M390 6 H468 A22 22 0 0 1 468 50 H396 M396 50 H474 A22 22 0 0 1 474 94 H390"/><path d="M560 6 H700 M574 50 H684 M560 94 H700"/></g></svg>
+  <h1 id="title">Connect to your jukebox</h1>
+  <p id="lead">Control the music, the queue and the volume from your phone.</p>
+  <div class="note" id="note" hidden></div>
+  <ol class="steps" id="steps">
+    <li>On the jukebox screen, open <b>Admin</b> and go to <b>API &amp; System Settings</b>.</li>
+    <li>Find <b>VYBE Control app</b>. Under <b>Step 2</b> there's a QR code.</li>
+    <li>Tap the button below and point your camera at it. Your phone needs to be on the pub's Wi-Fi.</li>
+  </ol>
+  <div class="grow"></div>
+  <button class="secondary" id="retry" hidden>Try again</button>
+  <button class="primary" id="scan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 12h8"/></svg>Scan the jukebox code</button>
+  <details id="manual">
+    <summary>Type the address instead</summary>
+    <form class="type" id="typeForm"><input id="addr" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="192.168.1.20:8787" aria-label="Jukebox address"><button type="submit">Connect</button></form>
+    <p class="hint">It's shown in Admin under Phone requests: “On the Wi-Fi at …”.</p>
+  </details>
+<script>
+  const q = new URLSearchParams(location.search);
+  const reason = q.get('reason') || '';
+  const jukebox = q.get('jukebox') || '';
+  const app = window.VybeApp;
+  const note = document.getElementById('note');
+  if (reason === 'offline') {
+    document.getElementById('title').textContent = "Can't reach the jukebox";
+    document.getElementById('lead').textContent = 'Check this phone is on the same Wi-Fi as the jukebox, and that the jukebox is switched on.';
+    if (jukebox) { note.textContent = `Trying ${jukebox.replace(/^https?:\/\//, '').replace(/\/?\?.*$/, '')}. If the jukebox has moved to a different network, scan its code again.`; note.hidden = false; }
+    document.getElementById('steps').hidden = true;
+    document.getElementById('retry').hidden = false;
+  } else if (reason === 'badcode') {
+    note.textContent = "That isn't a VYBE Control code. Use the one under Step 2 in the jukebox admin.";
+    note.hidden = false;
+  }
+  document.getElementById('scan').addEventListener('click', () => app && app.scan());
+  document.getElementById('retry').addEventListener('click', () => app && app.retry());
+  document.getElementById('typeForm').addEventListener('submit', (e) => { e.preventDefault(); const v = document.getElementById('addr').value.trim(); if (v && app) app.connect(v); });
+</script>
+</body>
+</html>

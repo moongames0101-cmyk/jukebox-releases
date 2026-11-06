@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.vybe.control'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.vybe.control'
+        minSdk 24
+        targetSdk 34 // 35 would force the page under the status bar on Android 15
+        // The build number goes up with every GitHub build, so each new APK installs over the last
+        versionCode Integer.parseInt(System.getenv('VYBE_BUILD_NUMBER') ?: '1')
+        versionName "1.0.${System.getenv('VYBE_BUILD_NUMBER') ?: '0'}"
+    }
+
+    // The signing key comes from the build (see .github/workflows/phone-app.yml), never from this repository
+    signingConfigs {
+        release {
+            storeFile file(System.getenv('VYBE_KEYSTORE') ?: 'missing.jks')
+            storePassword System.getenv('VYBE_KEYSTORE_PASSWORD') ?: ''
+            keyAlias 'vybe'
+            keyPassword System.getenv('VYBE_KEYSTORE_PASSWORD') ?: ''
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
+}

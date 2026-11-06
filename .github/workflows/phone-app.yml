@@ -1,0 +1,71 @@
+# Builds VYBE Control, the jukebox owner's Android app.
+#
+# - Every change to android/ is built, to check it still works (nothing is published).
+# - To publish: Actions → "VYBE Control (Android app)" → Run workflow. The APK goes on the
+#   "phone-app" release, which the QR code in the jukebox admin links to. That release is
+#   never marked "latest", so jukebox updates aren't affected.
+name: VYBE Control (Android app)
+
+on:
+  push:
+    paths:
+      - 'android/**'
+      - '.github/workflows/phone-app.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      # Android apps must be signed: a fresh key is made for each build and thrown away afterwards.
+      # Installing a newer build therefore means removing the old one first. That's rarely needed:
+      # the controls come from the jukebox itself, so jukebox updates change them without a new app.
+      - name: Signing key
+        run: |
+          PASS=$(openssl rand -hex 16)
+          echo "::add-mask::$PASS"
+          keytool -genkeypair -keystore "$RUNNER_TEMP/vybe.jks" -storetype PKCS12 -alias vybe -keyalg RSA -keysize 2048 \
+            -validity 11000 -storepass "$PASS" -keypass "$PASS" -dname "CN=VYBE Control, O=VYBE, C=GB"
+          echo "VYBE_KEYSTORE=$RUNNER_TEMP/vybe.jks" >> "$GITHUB_ENV"
+          echo "VYBE_KEYSTORE_PASSWORD=$PASS" >> "$GITHUB_ENV"
+
+      - name: Build the app
+        working-directory: android
+        env:
+          VYBE_BUILD_NUMBER: ${{ github.run_number }}
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Name the APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk VYBE-Control.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VYBE-Control
+          path: VYBE-Control.apk
+
+      - name: Publish to the phone-app release
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view phone-app >/dev/null 2>&1; then
+            gh release create phone-app --title "VYBE Control (Android app)" --prerelease --latest=false \
+              --notes "The jukebox owner's remote for Android phones. Scan the Step 1 code in the jukebox admin (API & System Settings → VYBE Control app) to download it, then the Step 2 code to connect."
+          fi
+          gh release upload phone-app VYBE-Control.apk --clobber
