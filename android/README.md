@@ -7,3 +7,7 @@ Built and published by GitHub Actions (`.github/workflows/phone-app.yml`) to the
 ## Signing
 
 Android only installs a new version over the old one when both are signed with the same key. No key is stored anywhere: `android/signing/make_key.py` works the same key out from the `VYBE_SIGNING_SEED` repository secret on every build. Keep that phrase the same; changing it means removing the app once and installing it again. Without the secret, builds are checked but not published.
+
+## Updating
+
+Pushing a change under `android/` builds and publishes a new version; phones running VYBE Control offer it the next time the app opens.
