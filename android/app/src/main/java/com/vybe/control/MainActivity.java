@@ -16,9 +16,10 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
-import com.google.zxing.client.android.Intents;
-import com.google.zxing.integration.android.IntentIntegrator;
-import com.google.zxing.integration.android.IntentResult;
+import com.google.mlkit.vision.barcode.common.Barcode;
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanner;
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions;
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning;
 
 /**
  * VYBE Control: the jukebox owner's remote.
@@ -162,25 +163,23 @@ public class MainActivity extends Activity {
         return s != null && (s.startsWith("http://") || s.startsWith("https://"));
     }
 
+    /** Google's QR code scanner (Google Play services): it handles the camera itself */
     private void scan() {
-        IntentIntegrator scanner = new IntentIntegrator(this);
-        scanner.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE);
-        scanner.setPrompt("Point at the “Connect it to this jukebox” code in the jukebox admin");
-        scanner.setBeepEnabled(false);
-        scanner.setOrientationLocked(false);
-        scanner.addExtra(Intents.Scan.SCAN_TYPE, Intents.Scan.MIXED_SCAN);
-        scanner.initiateScan();
+        try {
+            GmsBarcodeScannerOptions options = new GmsBarcodeScannerOptions.Builder()
+                    .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+                    .build();
+            GmsBarcodeScanner scanner = GmsBarcodeScanning.getClient(this, options);
+            scanner.startScan()
+                    .addOnSuccessListener(barcode -> scanned(barcode.getRawValue()))
+                    .addOnFailureListener(e -> showStart("scanfail"));
+        } catch (Exception e) {
+            showStart("scanfail");
+        }
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
-        if (result == null) {
-            super.onActivityResult(requestCode, resultCode, data);
-            return;
-        }
-        String text = result.getContents();
-        if (text == null) return; // cancelled
+    private void scanned(String text) {
+        if (text == null) return;
         Uri u = Uri.parse(text.trim());
         if ("vybe".equals(u.getScheme())) connectFrom(u);
         else showStart("badcode");

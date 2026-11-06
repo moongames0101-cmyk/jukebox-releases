@@ -4,8 +4,6 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.CAMERA" />
-    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:label="VYBE Control"
@@ -37,10 +35,9 @@
             </intent-filter>
         </activity>
 
-        <!-- The QR scanner, upright like the rest of the app -->
-        <activity
-            android:name="com.journeyapps.barcodescanner.CaptureActivity"
-            android:screenOrientation="fullSensor"
-            tools:replace="screenOrientation" />
+        <!-- Get Google's QR scanner ready when the app is installed, so the first scan opens straight away -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="barcode_ui" />
     </application>
 </manifest>

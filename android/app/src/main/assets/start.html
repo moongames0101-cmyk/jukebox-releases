@@ -63,6 +63,10 @@
     if (jukebox) { note.textContent = `Trying ${jukebox.replace(/^https?:\/\//, '').replace(/\/?\?.*$/, '')}. If the jukebox has moved to a different network, scan its code again.`; note.hidden = false; }
     document.getElementById('steps').hidden = true;
     document.getElementById('retry').hidden = false;
+  } else if (reason === 'scanfail') {
+    note.textContent = "The scanner couldn't open. Point your phone's Camera app at the Step 2 code instead, or type the address below.";
+    note.hidden = false;
+    document.getElementById('manual').open = true;
   } else if (reason === 'badcode') {
     note.textContent = "That isn't a VYBE Control code. Use the one under Step 2 in the jukebox admin.";
     note.hidden = false;

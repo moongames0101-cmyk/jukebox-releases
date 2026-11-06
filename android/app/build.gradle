@@ -39,5 +39,6 @@ android {
 }
 
 dependencies {
-    implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
+    // Google's QR code scanner (part of Google Play services, already on Samsung phones): no camera permission needed
+    implementation 'com.google.android.gms:play-services-code-scanner:16.1.0'
 }
