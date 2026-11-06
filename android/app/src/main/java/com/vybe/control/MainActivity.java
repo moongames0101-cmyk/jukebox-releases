@@ -2,11 +2,16 @@ package com.vybe.control;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
+import android.widget.Toast;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
@@ -21,6 +26,18 @@ import com.google.mlkit.vision.codescanner.GmsBarcodeScanner;
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions;
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning;
 
+import androidx.core.content.FileProvider;
+
+import org.json.JSONObject;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+
 /**
  * VYBE Control: the jukebox owner's remote.
  *
@@ -32,6 +49,9 @@ import com.google.mlkit.vision.codescanner.GmsBarcodeScanning;
 public class MainActivity extends Activity {
     private static final String PREFS = "vybe";
     private static final String START = "file:///android_asset/start.html";
+    /** Published with every new build of the app (see .github/workflows/phone-app.yml) */
+    private static final String RELEASE = "https://github.com/moongames0101-cmyk/jukebox-releases/releases/download/phone-app/";
+    private static final long CHECK_EVERY_MS = 6L * 60 * 60 * 1000;
 
     private WebView web;
     private SharedPreferences prefs;
@@ -106,6 +126,97 @@ public class MainActivity extends Activity {
         Uri data = getIntent() != null ? getIntent().getData() : null;
         if (data != null && "vybe".equals(data.getScheme())) connectFrom(data);
         else openJukebox();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        checkForUpdate(false);
+    }
+
+    // ── Updates: a newer build on GitHub → "Update VYBE Control?" → Android's installer
+
+    private long myVersion() {
+        try {
+            PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
+            return Build.VERSION.SDK_INT >= 28 ? info.getLongVersionCode() : info.versionCode;
+        } catch (Exception e) {
+            return Long.MAX_VALUE;
+        }
+    }
+
+    private static byte[] download(String address, int limit) throws Exception {
+        HttpURLConnection c = (HttpURLConnection) new URL(address).openConnection();
+        c.setInstanceFollowRedirects(true);
+        c.setUseCaches(false);
+        c.setConnectTimeout(15000);
+        c.setReadTimeout(30000);
+        try (InputStream in = c.getInputStream(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            if (c.getResponseCode() != 200) throw new Exception("HTTP " + c.getResponseCode());
+            byte[] buf = new byte[16384];
+            int n;
+            while ((n = in.read(buf)) > 0) {
+                out.write(buf, 0, n);
+                if (out.size() > limit) throw new Exception("too big");
+            }
+            return out.toByteArray();
+        } finally {
+            c.disconnect();
+        }
+    }
+
+    private void checkForUpdate(boolean now) {
+        long last = prefs.getLong("updateChecked", 0);
+        if (!now && System.currentTimeMillis() - last < CHECK_EVERY_MS) return;
+        prefs.edit().putLong("updateChecked", System.currentTimeMillis()).apply();
+        new Thread(() -> {
+            try {
+                JSONObject info = new JSONObject(new String(download(RELEASE + "version.json", 64 * 1024), "UTF-8"));
+                long latest = info.optLong("versionCode", 0);
+                if (latest > myVersion()) runOnUiThread(() -> offerUpdate(latest));
+            } catch (Exception ignored) {
+                // No internet or nothing published yet: try again next time
+            }
+        }).start();
+    }
+
+    private void offerUpdate(long version) {
+        if (isFinishing() || prefs.getLong("skipped", 0) == version) return;
+        new AlertDialog.Builder(this)
+                .setTitle("Update VYBE Control?")
+                .setMessage("A new version of the app is ready. It only takes a few seconds.")
+                .setPositiveButton("Update", (d, w) -> startUpdate())
+                .setNegativeButton("Later", (d, w) -> prefs.edit().putLong("skipped", version).apply())
+                .show();
+    }
+
+    private void startUpdate() {
+        // The first time, Android asks you to let VYBE Control install updates
+        if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
+            Toast.makeText(this, "Allow VYBE Control to install updates, then come back to the app", Toast.LENGTH_LONG).show();
+            prefs.edit().putLong("updateChecked", 0).apply(); // ask again when they're back
+            startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName())));
+            return;
+        }
+        Toast.makeText(this, "Downloading the update…", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            try {
+                byte[] apk = download(RELEASE + "VYBE-Control.apk", 60 * 1024 * 1024);
+                File dir = new File(getCacheDir(), "updates");
+                if (!dir.exists() && !dir.mkdirs()) throw new Exception("no space");
+                File file = new File(dir, "VYBE-Control.apk");
+                try (OutputStream out = new FileOutputStream(file)) {
+                    out.write(apk);
+                }
+                Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".updates", file);
+                Intent install = new Intent(Intent.ACTION_VIEW);
+                install.setDataAndType(uri, "application/vnd.android.package-archive");
+                install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                runOnUiThread(() -> startActivity(install));
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(this, "The update didn't download. Try again later.", Toast.LENGTH_LONG).show());
+            }
+        }).start();
     }
 
     @Override

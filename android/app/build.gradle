@@ -41,4 +41,6 @@ android {
 dependencies {
     // Google's QR code scanner (part of Google Play services, already on Samsung phones): no camera permission needed
     implementation 'com.google.android.gms:play-services-code-scanner:16.1.0'
+    // Handing a downloaded update to Android's installer
+    implementation 'androidx.core:core:1.13.1'
 }

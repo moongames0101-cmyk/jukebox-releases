@@ -1,13 +1,19 @@
-# Builds VYBE Control, the jukebox owner's Android app.
+# Builds VYBE Control, the jukebox owner's Android app, and publishes it.
 #
-# - Every change to android/ is built, to check it still works (nothing is published).
-# - To publish: Actions → "VYBE Control (Android app)" → Run workflow. The APK goes on the
-#   "phone-app" release, which the QR code in the jukebox admin links to. That release is
-#   never marked "latest", so jukebox updates aren't affected.
+# The app is signed with a key worked out from the VYBE_SIGNING_SEED repository secret
+# (android/signing/make_key.py), so every build has the same key and installs over the
+# last one. The app checks the phone-app release when it opens and offers each new
+# version ("Update VYBE Control?").
+#
+# - Every change to android/ is built and, once the secret is set, published.
+# - Actions → "VYBE Control (Android app)" → Run workflow publishes the current code again.
+# - The phone-app release is never marked "latest", so jukebox updates aren't affected.
+# - Without the secret, builds are checked but nothing is published.
 name: VYBE Control (Android app)
 
 on:
   push:
+    branches: [main]
     paths:
       - 'android/**'
       - '.github/workflows/phone-app.yml'
@@ -37,16 +43,22 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      # Android apps must be signed: a fresh key is made for each build and thrown away afterwards.
-      # Installing a newer build therefore means removing the old one first. That's rarely needed:
-      # the controls come from the jukebox itself, so jukebox updates change them without a new app.
       - name: Signing key
+        env:
+          VYBE_SEED: ${{ secrets.VYBE_SIGNING_SEED }}
         run: |
           PASS=$(openssl rand -hex 16)
           echo "::add-mask::$PASS"
-          keytool -genkeypair -keystore "$RUNNER_TEMP/vybe.jks" -storetype PKCS12 -alias vybe -keyalg RSA -keysize 2048 \
-            -validity 11000 -storepass "$PASS" -keypass "$PASS" -dname "CN=VYBE Control, O=VYBE, C=GB"
-          echo "VYBE_KEYSTORE=$RUNNER_TEMP/vybe.jks" >> "$GITHUB_ENV"
+          if [ -n "$VYBE_SEED" ]; then
+            pip install --quiet cryptography
+            python3 android/signing/make_key.py "$RUNNER_TEMP/vybe.p12" "$PASS"
+            echo "VYBE_PUBLISH=1" >> "$GITHUB_ENV"
+          else
+            keytool -genkeypair -keystore "$RUNNER_TEMP/vybe.p12" -storetype PKCS12 -alias vybe -keyalg RSA -keysize 2048 \
+              -validity 11000 -storepass "$PASS" -keypass "$PASS" -dname "CN=VYBE Control test, O=VYBE, C=GB"
+            echo "::warning::Add the VYBE_SIGNING_SEED repository secret to publish the app (this build was only checked)."
+          fi
+          echo "VYBE_KEYSTORE=$RUNNER_TEMP/vybe.p12" >> "$GITHUB_ENV"
           echo "VYBE_KEYSTORE_PASSWORD=$PASS" >> "$GITHUB_ENV"
 
       - name: Build the app
@@ -64,12 +76,13 @@ jobs:
           path: VYBE-Control.apk
 
       - name: Publish to the phone-app release
-        if: github.event_name == 'workflow_dispatch'
+        if: env.VYBE_PUBLISH == '1' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          echo "{\"versionCode\": ${{ github.run_number }}, \"versionName\": \"1.0.${{ github.run_number }}\"}" > version.json
           if ! gh release view phone-app >/dev/null 2>&1; then
             gh release create phone-app --title "VYBE Control (Android app)" --prerelease --latest=false \
-              --notes "The jukebox owner's remote for Android phones. Scan the Step 1 code in the jukebox admin (API & System Settings → VYBE Control app) to download it, then the Step 2 code to connect."
+              --notes "The jukebox owner's remote for Android phones. Scan the Step 1 code in the jukebox admin (API & System Settings → VYBE Control app) to download it, then the Step 2 code to connect. The app offers its own updates."
           fi
-          gh release upload phone-app VYBE-Control.apk --clobber
+          gh release upload phone-app VYBE-Control.apk version.json --clobber
