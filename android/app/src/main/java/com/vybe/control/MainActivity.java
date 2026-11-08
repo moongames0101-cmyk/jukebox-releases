@@ -10,6 +10,8 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.widget.Toast;
 import android.webkit.JavascriptInterface;
@@ -17,6 +19,7 @@ import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -45,6 +48,10 @@ import java.net.URL;
  * so they update whenever the jukebox does. This app remembers which jukebox to open, scans the
  * "Connect it to this jukebox" QR code in the jukebox admin, and shows a start screen when it
  * can't reach it.
+ *
+ * Opening it never leaves a blank screen: it shows "Connecting…", asks the Wi-Fi address and the
+ * internet link at the same time (with short time limits), opens whichever answers, and otherwise
+ * says why it can't reach the jukebox.
  */
 public class MainActivity extends Activity {
     private static final String PREFS = "vybe";
@@ -52,11 +59,20 @@ public class MainActivity extends Activity {
     /** Published with every new build of the app (see .github/workflows/phone-app.yml) */
     private static final String RELEASE = "https://github.com/moongames0101-cmyk/jukebox-releases/releases/download/phone-app/";
     private static final long CHECK_EVERY_MS = 6L * 60 * 60 * 1000;
+    /** How long each address gets to answer before the app gives up on it */
+    private static final int WIFI_WAIT_MS = 3000;
+    private static final int INTERNET_WAIT_MS = 8000;
+    /** A jukebox page that hasn't finished loading by now is treated as unreachable */
+    private static final long PAGE_WAIT_MS = 20000;
 
     private WebView web;
     private SharedPreferences prefs;
     /** True while trying the internet link after the Wi-Fi address didn't answer */
     private boolean triedInternet = false;
+    private final Handler ui = new Handler(Looper.getMainLooper());
+    /** Goes up with every attempt to open the jukebox, so answers to an older attempt are ignored */
+    private int attempt = 0;
+    private boolean pageLoaded = false;
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
@@ -92,9 +108,9 @@ public class MainActivity extends Activity {
                     return true;
                 }
                 if ("file".equals(url.getScheme())) return false;
-                // Pages on the jukebox stay in the app; anything else opens in the browser
-                Uri home = Uri.parse(currentBase());
-                if (home.getHost() != null && home.getHost().equals(url.getHost())) return false;
+                // Pages on the jukebox (its Wi-Fi address or its internet link) stay in the app;
+                // anything else opens in the browser
+                if (isJukebox(url, "local") || isJukebox(url, "internet")) return false;
                 try {
                     startActivity(new Intent(Intent.ACTION_VIEW, url));
                 } catch (Exception ignored) {
@@ -111,15 +127,28 @@ public class MainActivity extends Activity {
                 String internet = prefs.getString("internet", "");
                 if (!triedInternet && internet.length() > 0) {
                     triedInternet = true;
-                    view.loadUrl(controlUrl(internet));
+                    loadJukebox(controlUrl(internet));
                     return;
                 }
                 showStart("offline");
             }
 
             @Override
+            public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
+                if (!request.isForMainFrame()) return;
+                if (!isJukebox(request.getUrl(), "internet")) return;
+                int code = response.getStatusCode();
+                // 403: the jukebox has a new internet link. 5xx: the link isn't running any more.
+                if (code == 403) showStart("expired");
+                else if (code >= 500) showStart("offline");
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
-                if (url != null && !url.startsWith("file:")) triedInternet = false;
+                if (url != null && !url.startsWith("file:")) {
+                    triedInternet = false;
+                    pageLoaded = true;
+                }
             }
         });
 
@@ -132,6 +161,9 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         checkForUpdate(false);
+        // Back from Settings (e.g. after joining the pub's Wi-Fi): try again by itself
+        String now = web.getUrl();
+        if (now != null && now.startsWith(START) && now.contains("reason=offline")) openJukebox();
     }
 
     // ── Updates: a newer build on GitHub → "Update VYBE Control?" → Android's installer
@@ -227,10 +259,10 @@ public class MainActivity extends Activity {
         if (data != null && "vybe".equals(data.getScheme())) connectFrom(data);
     }
 
-    /** The jukebox's Wi-Fi address (or the internet link when there's no Wi-Fi one) */
-    private String currentBase() {
-        String local = prefs.getString("local", "");
-        return local.length() > 0 ? local : prefs.getString("internet", "");
+    /** Whether a link points at the jukebox's saved "local" (Wi-Fi) or "internet" address */
+    private boolean isJukebox(Uri url, String which) {
+        String host = Uri.parse(prefs.getString(which, "")).getHost();
+        return host != null && host.equals(url.getHost());
     }
 
     /** http://192.168.1.20:8787 → http://192.168.1.20:8787/control (keeping the internet link's access key) */
@@ -241,17 +273,86 @@ public class MainActivity extends Activity {
     }
 
     private void openJukebox() {
-        String base = currentBase();
-        if (base.length() == 0) {
+        final String local = prefs.getString("local", "");
+        final String internet = prefs.getString("internet", "");
+        if (local.length() == 0 && internet.length() == 0) {
             showStart("");
             return;
         }
-        triedInternet = prefs.getString("local", "").length() == 0;
-        web.loadUrl(controlUrl(base));
+        showStart("connecting");
+        final int mine = attempt;
+        new Thread(() -> {
+            // Ask both at once; the Wi-Fi address wins whenever it answers
+            final int[] answer = {-1, -1};
+            Thread wifi = new Thread(() -> answer[0] = local.length() > 0 ? ask(controlUrl(local), WIFI_WAIT_MS) : -1);
+            Thread net = new Thread(() -> answer[1] = internet.length() > 0 ? ask(controlUrl(internet), INTERNET_WAIT_MS) : -1);
+            wifi.start();
+            net.start();
+            try {
+                wifi.join();
+                if (answer[0] != 200) net.join();
+            } catch (InterruptedException ignored) {
+            }
+            final String reason;
+            final String open;
+            if (answer[0] == 200) {
+                open = controlUrl(local);
+                reason = null;
+            } else if (answer[1] == 200 || answer[1] == 302) {
+                open = controlUrl(internet);
+                reason = null;
+            } else {
+                open = null;
+                reason = answer[1] == 403 ? "expired" : "offline";
+            }
+            ui.post(() -> {
+                if (mine != attempt || isFinishing()) return; // something newer happened meanwhile
+                if (open != null) {
+                    triedInternet = open.equals(controlUrl(internet));
+                    loadJukebox(open);
+                } else {
+                    showStart(reason);
+                }
+            });
+        }).start();
+    }
+
+    /** The HTTP status an address answers with (302 = the internet link let us in), or 0 if it doesn't answer in time */
+    private static int ask(String address, int waitMs) {
+        HttpURLConnection c = null;
+        try {
+            c = (HttpURLConnection) new URL(address).openConnection();
+            c.setInstanceFollowRedirects(false);
+            c.setUseCaches(false);
+            c.setConnectTimeout(waitMs);
+            c.setReadTimeout(waitMs);
+            c.setRequestProperty("User-Agent", "VYBEControl/1");
+            return c.getResponseCode();
+        } catch (Exception e) {
+            return 0;
+        } finally {
+            if (c != null) c.disconnect();
+        }
+    }
+
+    /** Opens a jukebox page, and gives up (with the "can't reach" screen) if it hangs */
+    private void loadJukebox(String url) {
+        final int mine = ++attempt;
+        pageLoaded = false;
+        web.loadUrl(url);
+        ui.postDelayed(() -> {
+            if (mine == attempt && !pageLoaded) {
+                web.stopLoading();
+                showStart("offline");
+            }
+        }, PAGE_WAIT_MS);
     }
 
     private void showStart(String reason) {
-        String url = START + "?reason=" + Uri.encode(reason) + "&jukebox=" + Uri.encode(currentBase());
+        attempt++;
+        boolean hasInternet = prefs.getString("internet", "").length() > 0;
+        String url = START + "?reason=" + Uri.encode(reason) + "&jukebox=" + Uri.encode(prefs.getString("local", ""))
+                + "&net=" + (hasInternet ? "1" : "0");
         web.loadUrl(url);
     }
 
