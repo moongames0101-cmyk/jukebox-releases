@@ -154,6 +154,24 @@
           </div>
 
           <div class="field">
+            <label class="switch"><input type="checkbox" id="auroraOn"><span class="switch-track" aria-hidden="true"></span> Glowing background</label>
+            <div class="fx-controls" id="auroraControls" hidden>
+              <div class="fx-row">
+                <span class="aurora-swatches">
+                  <span class="cl-swatch" data-aurora-swatch="0"><input type="color" data-aurora="0" aria-label="Glow colour 1"></span>
+                  <span class="cl-swatch" data-aurora-swatch="1"><input type="color" data-aurora="1" aria-label="Glow colour 2"></span>
+                  <span class="cl-swatch" data-aurora-swatch="2"><input type="color" data-aurora="2" aria-label="Glow colour 3"></span>
+                </span>
+                <button class="link" id="auroraReset" hidden>Match theme</button>
+              </div>
+              <label for="auroraIntensity">Glow strength <output id="auroraIntensityOut"></output></label>
+              <input type="range" id="auroraIntensity" min="0.2" max="1" step="0.05">
+            </div>
+            <label class="switch glass-edges"><input type="checkbox" id="glassEdges"><span class="switch-track" aria-hidden="true"></span> Glass edges on panels</label>
+            <p class="help">Soft colour drifts slowly behind see-through panels, like Gel itself. Tune it with Panel see-through and Frosted glass below.</p>
+          </div>
+
+          <div class="field">
             <span class="label">Background picture</span>
             <div class="bg-picker">
               <div class="bg-thumb" id="bgThumb"><span>No picture</span></div>

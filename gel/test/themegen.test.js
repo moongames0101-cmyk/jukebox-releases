@@ -236,3 +236,28 @@ test('theme.js includes song colours and the record spin only when asked', () =>
   assert.ok(both.includes('gelFxEngine') && both.includes('colorExtractor'));
   assert.doesNotThrow(() => new Function(both));
 });
+
+test('glowing background and glass edges', () => {
+  const css = st => T.buildUserCss({ name: 'g', colors: T.ORIGINAL, style: Object.assign(T.defaultStyle(), st) });
+  const on = css({ aurora: { on: true, colors: ['FF5FA2', '9B6BFF', '3EE0FF'], intensity: 1 }, glassEdges: true });
+  assert.ok(on.includes('.Root__top-container::before'));
+  assert.ok(on.includes('rgba(255,95,162, 0.75)'));
+  assert.ok(on.includes('/* See-through panels */'), 'glow needs see-through panels');
+  assert.ok(on.includes('/* Glass edges */'));
+  assert.strictEqual((on.match(/{/g) || []).length, (on.match(/}/g) || []).length);
+  const off = css({});
+  assert.ok(!off.includes('::before') && !off.includes('Glass edges'));
+  assert.deepStrictEqual(T.sanitizeStyle({ aurora: { on: 1, colors: ['zz', 'FFF', '000'], intensity: 9 } }).aurora, { on: true, colors: null, intensity: 1 });
+  assert.strictEqual(T.auroraColors(T.ORIGINAL, { colors: null }).length, 3);
+});
+
+test('Glass and glow themes come first and use the glow', () => {
+  assert.strictEqual(GROUPS[0].id, 'glass');
+  const glassThemes = PRESETS.filter(p => p.group === 'glass');
+  assert.ok(glassThemes.length >= 5);
+  for (const p of glassThemes) {
+    assert.ok(p.style.aurora.on && p.style.glassEdges, p.id);
+    assert.ok(T.isSeeThrough(p.style), p.id);
+  }
+  assert.strictEqual(PRESETS.find(p => p.id === 'gel-glass').style.layout.glyph, 'jelly');
+});

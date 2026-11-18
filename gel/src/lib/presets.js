@@ -4,6 +4,7 @@
   const T = (typeof module !== 'undefined' && module.exports) ? require('./themegen.js') : root.Gel.themegen;
 
   const GROUPS = [
+    { id: 'glass', name: 'Glass and glow', short: 'Glass' },
     { id: 'anime', name: 'Anime', short: 'Anime' },
     { id: 'type', name: 'Font lovers', short: 'Fonts' },
     { id: 'mood', name: 'Moods and weather', short: 'Moods' },
@@ -13,7 +14,18 @@
 
   const fx = (effect, amount, extra) => Object.assign({ effect, amount: amount == null ? 0.5 : amount, speed: 1, layer: 'over', color: null }, extra || {});
 
+  const glass = (colors, extra) => Object.assign({
+    aurora: { on: true, colors, intensity: 0.7 }, glassEdges: true, panelOpacity: 0.55, bgBlur: 26, radius: 18, glow: true,
+  }, extra);
+
   const seeds = [
+    // ---------- Glass and glow: Gel's own look, in Spotify ----------
+    { id: 'gel-glass', group: 'glass', name: 'Gel Glass', blurb: 'Frosted glass, neon glow', seed: { mode: 'dark', bg: '100C22', text: 'F5F2FF', accent: 'FF5FA2', sidebar: '0C0A1A' }, style: glass(['FF5FA2', '9B6BFF', '3EE0FF'], { font: 'Outfit', headingFont: 'Unbounded', fx: fx('sparkles', 0.2, { color: '3EE0FF' }) }) },
+    { id: 'glass-sakura', group: 'glass', name: 'Glass Sakura', blurb: 'Blush glow, falling petals', seed: { mode: 'dark', bg: '1C0F1E', text: 'FDEFF5', accent: 'FF8FB8', sidebar: '140A16' }, style: glass(['FF8FB8', 'FFB38A', 'C69BFF'], { font: 'M PLUS Rounded 1c', headingFont: 'Mochiy Pop One', fx: fx('petals', 0.5) }) },
+    { id: 'glass-ocean', group: 'glass', name: 'Glass Ocean', blurb: 'Deep teal light, bubbles', seed: { mode: 'dark', bg: '061A26', text: 'E6FAFF', accent: '2FE0D0', sidebar: '04121B' }, style: glass(['2FE0D0', '3E8BFF', '7A5CFF'], { font: 'Plus Jakarta Sans', headingFont: 'Sora', fx: fx('bubbles', 0.35) }) },
+    { id: 'glass-sunset', group: 'glass', name: 'Glass Sunset', blurb: 'Orange, pink and violet haze', seed: { mode: 'dark', bg: '1A0E1C', text: 'FFF1E8', accent: 'FF8A3D', sidebar: '120914' }, style: glass(['FF8A3D', 'FF4F8B', '8B5CFF'], { font: 'Figtree', headingFont: 'Syne', fx: fx('embers', 0.3) }) },
+    { id: 'glass-daylight', group: 'glass', name: 'Glass Daylight', blurb: 'Pastel glow, light glass', seed: { mode: 'light', bg: 'F4F1FF', text: '1E1838', accent: '7C4DFF' }, style: glass(['FF9EC7', 'A98BFF', '7FE3FF'], { font: 'Outfit', headingFont: 'Unbounded', panelOpacity: 0.62, glow: false, fx: fx('sparkles', 0.25) }) },
+
     // ---------- Anime ----------
     { id: 'neo-tokyo', group: 'anime', name: 'Neo Tokyo', blurb: 'Neon rain on a night city', seed: { mode: 'dark', bg: '0B0F1E', text: 'E6F1FF', accent: 'FF2E88', sidebar: '05070F' }, style: { font: 'Exo 2', headingFont: 'Orbitron', glow: true, radius: 6, fx: fx('rain', 0.55, { speed: 1.1, color: '00E5FF' }) } },
     { id: 'magical-girl', group: 'anime', name: 'Magical Girl', blurb: 'Pastel pink and sparkles', seed: { mode: 'light', bg: 'FFF0F7', text: '4A1D3F', accent: 'FF4FA3' }, style: { font: 'M PLUS Rounded 1c', headingFont: 'Mochiy Pop One', radius: 18, fx: fx('sparkles', 0.5) } },
@@ -76,6 +88,11 @@
 
   // Each theme's logo emblem and layout. Anything not listed keeps Spotify's normal layout.
   const LOOKS = {
+    'gel-glass': { glyph: 'jelly', player: 'floating', art: 'rounded', scrollbars: true, bouncy: true },
+    'glass-sakura': { glyph: 'sakura', player: 'floating', art: 'rounded', scrollbars: true, bouncy: true },
+    'glass-ocean': { glyph: 'wave', player: 'floating', art: 'rounded', scrollbars: true, bouncy: true },
+    'glass-sunset': { glyph: 'sun', player: 'floating', art: 'circle', scrollbars: true, bouncy: true },
+    'glass-daylight': { glyph: 'jelly', player: 'floating', art: 'rounded', scrollbars: true, bouncy: true },
     'neo-tokyo': { glyph: 'bolt', scrollbars: true },
     'magical-girl': { glyph: 'sparkle', art: 'rounded', player: 'floating', bouncy: true },
     'sakura': { glyph: 'sakura', art: 'rounded', player: 'floating' },

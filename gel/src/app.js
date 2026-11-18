@@ -102,8 +102,8 @@
     state.theme = themeFrom(stored, { sourceId: stored.sourceId || null, savedId: stored.savedId || null });
     state.selected = stored.savedId || stored.sourceId || null;
   } else {
-    state.theme = themeFrom(PRESETS.find(p => p.id === 'night-drive'));
-    state.selected = 'night-drive';
+    state.theme = themeFrom(PRESETS.find(p => p.id === 'gel-glass'));
+    state.selected = 'gel-glass';
   }
   state.mode = C.isDark(state.theme.colors.main) ? 'dark' : 'light';
 
@@ -196,7 +196,15 @@
       frame.style.backgroundImage = '';
       el.classList.remove('has-bg');
     }
-    const seeThrough = !!style.bgImage || behind;
+    const seeThrough = T.isSeeThrough(style);
+    el.classList.toggle('aurora', style.aurora.on);
+    el.classList.toggle('glass-edges', style.glassEdges);
+    if (style.aurora.on) {
+      const au = T.auroraColors(colors, style.aurora);
+      au.forEach((hex, i) => el.style.setProperty(`--au-${i + 1}`, C.rgbString(hex).replace(/,/g, ' ')));
+      el.style.setProperty('--au-k', String(style.aurora.intensity));
+    }
+    el.style.setProperty('--edge', C.isDark(colors.main) ? '255 255 255' : '0 0 0');
     el.style.setProperty('--p-alpha', seeThrough ? String(style.panelOpacity) : '1');
     el.style.setProperty('--p-blur', seeThrough ? `${style.bgBlur}px` : '0px');
     el.classList.toggle('fx-behind', behind);
@@ -273,7 +281,14 @@
       const fc = '#' + (fx.color || FX.autoColor(fx.effect, c));
       deco = `<span class="chip-fx fx-${fx.effect}" style="--c-fx:${fc}"><i></i><i></i><i></i><i></i></span>`;
     }
-    return `<span class="chip-field" style="${vars}"><span class="chip-logo"></span><span class="chip-side"></span><span class="chip-frame"></span><span class="chip-lines"><i></i><i></i><i></i></span><span class="chip-dot"></span><span class="chip-player"></span>${deco}</span>`;
+    let glow = '';
+    let glowVars = '';
+    if (st.aurora && st.aurora.on) {
+      const au = T.auroraColors(c, T.sanitizeStyle(st).aurora);
+      glow = ' glow';
+      glowVars = ';' + au.map((h, i) => `--c-au${i + 1}:#${h}`).join(';');
+    }
+    return `<span class="chip-field${glow}" style="${vars}${glowVars}"><span class="chip-logo"></span><span class="chip-side"></span><span class="chip-frame"></span><span class="chip-lines"><i></i><i></i><i></i></span><span class="chip-dot"></span><span class="chip-player"></span>${deco}</span>`;
   }
 
   function escapeHtml(s) {
@@ -498,7 +513,18 @@
     $('#bgRemove').hidden = !s.bgImage;
     $('#bgChoose').textContent = s.bgImage ? 'Change picture…' : 'Choose picture…';
     $('#bgDimWrap').hidden = !s.bgImage;
-    $('#seeThroughWrap').hidden = !(s.bgImage || (s.fx.effect !== 'none' && s.fx.layer === 'behind'));
+    $('#seeThroughWrap').hidden = !T.isSeeThrough(s);
+    $('#auroraOn').checked = s.aurora.on;
+    $('#auroraControls').hidden = !s.aurora.on;
+    $('#glassEdges').checked = s.glassEdges;
+    const au = T.auroraColors(state.theme.colors, s.aurora);
+    au.forEach((hex, i) => {
+      document.querySelector(`[data-aurora="${i}"]`).value = `#${hex.toLowerCase()}`;
+      document.querySelector(`[data-aurora-swatch="${i}"]`).style.background = `#${hex}`;
+    });
+    $('#auroraReset').hidden = !s.aurora.colors;
+    $('#auroraIntensity').value = s.aurora.intensity;
+    $('#auroraIntensityOut').textContent = `${Math.round(s.aurora.intensity * 100)}%`;
     $('#bgDim').value = s.bgDim; $('#bgDimOut').textContent = `${Math.round(s.bgDim * 100)}%`;
     $('#panelOpacity').value = s.panelOpacity; $('#panelOpacityOut').textContent = `${Math.round((1 - s.panelOpacity) * 100)}%`;
     $('#bgBlur').value = s.bgBlur; $('#bgBlurOut').textContent = s.bgBlur ? `${s.bgBlur} px` : 'Off';
@@ -557,6 +583,28 @@
   $('#fxColor').addEventListener('input', e => fxChanged({ color: e.target.value }));
   $('#fxColorReset').addEventListener('click', () => fxChanged({ color: null }));
   document.querySelectorAll('[data-layer]').forEach(b => b.addEventListener('click', () => fxChanged({ layer: b.dataset.layer })));
+
+  // ---------- Glowing background ----------
+  function auroraChanged(patch) {
+    state.theme.style.aurora = Object.assign({}, state.theme.style.aurora, patch);
+    state.theme.style = T.sanitizeStyle(state.theme.style);
+    styleChanged();
+  }
+  $('#auroraOn').addEventListener('change', e => {
+    const patch = { on: e.target.checked };
+    // Turning the glow on makes the panels see-through enough to show it
+    if (e.target.checked && state.theme.style.panelOpacity > 0.8) state.theme.style.panelOpacity = 0.6;
+    if (e.target.checked && !state.theme.style.bgBlur) state.theme.style.bgBlur = 22;
+    auroraChanged(patch);
+  });
+  $('#auroraIntensity').addEventListener('input', e => auroraChanged({ intensity: Number(e.target.value) }));
+  document.querySelectorAll('[data-aurora]').forEach(inp => inp.addEventListener('input', () => {
+    const current = T.auroraColors(state.theme.colors, state.theme.style.aurora).slice();
+    current[Number(inp.dataset.aurora)] = C.normHex(inp.value);
+    auroraChanged({ colors: current });
+  }));
+  $('#auroraReset').addEventListener('click', () => auroraChanged({ colors: null }));
+  $('#glassEdges').addEventListener('change', e => { state.theme.style.glassEdges = e.target.checked; styleChanged(); });
 
   // ---------- Layout ----------
   $('#glyphGrid').innerHTML = Object.entries(G.GLYPHS).map(([id, g]) =>

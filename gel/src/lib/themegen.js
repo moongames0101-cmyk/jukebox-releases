@@ -123,7 +123,8 @@
   }
 
   function defaultStyle() {
-    return { font: 'default', customFont: '', headingFont: 'same', radius: 8, glow: false, bgImage: null, bgDim: 0.55, bgBlur: 0, panelOpacity: 0.72, customCSS: '', fx: FX.defaultFx(), layout: defaultLayout(), dynamic: 'off' };
+    return { font: 'default', customFont: '', headingFont: 'same', radius: 8, glow: false, bgImage: null, bgDim: 0.55, bgBlur: 0, panelOpacity: 0.72, customCSS: '', fx: FX.defaultFx(), layout: defaultLayout(), dynamic: 'off',
+      aurora: { on: false, colors: null, intensity: 0.6 }, glassEdges: false };
   }
 
   /**
@@ -209,6 +210,12 @@
     s.fx = FX.sanitizeFx(s.fx);
     s.layout = sanitizeLayout(s.layout);
     if (!DYNAMIC_MODES.includes(s.dynamic)) s.dynamic = 'off';
+    const a = Object.assign({ on: false, colors: null, intensity: 0.6 }, s.aurora || {});
+    a.on = !!a.on;
+    a.colors = Array.isArray(a.colors) && a.colors.length === 3 && a.colors.every(c => C.normHex(c)) ? a.colors.map(C.normHex) : null;
+    a.intensity = C.clamp(Number(a.intensity) || 0.6, 0.2, 1);
+    s.aurora = a;
+    s.glassEdges = !!s.glassEdges;
     return s;
   }
 
@@ -229,6 +236,19 @@
   }
 
   const FALLBACK = 'CircularSp, CircularSp-Arab, CircularSp-Hebr, CircularSp-Cyrl, CircularSp-Grek, CircularSp-Deva, sans-serif';
+
+  // Three glow colours: the theme's accent and two neighbours on the colour wheel
+  function auroraColors(colors, aurora) {
+    if (aurora && aurora.colors) return aurora.colors;
+    const base = C.rgbToHsl(C.hexToRgb(colors['button-active']));
+    const shift = deg => C.rgbToHex(C.hslToRgb({ h: base.h + deg, s: Math.max(base.s, 0.55), l: C.clamp(base.l, 0.5, 0.65) }));
+    return [colors['button-active'], shift(50), shift(-60)];
+  }
+
+  // Is the frame see-through? (picture, animation behind the panels, or the glowing background)
+  function isSeeThrough(s) {
+    return !!s.bgImage || (s.fx.effect !== 'none' && s.fx.layer === 'behind') || s.aurora.on;
+  }
 
   const LOGO_SEL = '.main-globalNav-link-icon, .main-appShell-logo, .main-navBar-logo';
   const LOGO_KIDS = '.main-globalNav-link-icon *, .main-appShell-logo *, .main-navBar-logo *';
@@ -318,7 +338,7 @@
     const hasFx = fxCfg.effect !== 'none';
     const behind = hasFx && s.fx.layer === 'behind';
     const live = s.dynamic !== 'off'
-      ? { mode: s.dynamic, dark: C.isDark(colors.main), text: '#' + colors.text, main: '#' + colors.main, alpha: (s.bgImage || behind) ? Number(s.panelOpacity.toFixed(2)) : 1 }
+      ? { mode: s.dynamic, dark: C.isDark(colors.main), text: '#' + colors.text, main: '#' + colors.main, alpha: isSeeThrough(s) ? Number(s.panelOpacity.toFixed(2)) : 1 }
       : null;
     const vinyl = s.layout.art === 'vinyl';
     if (!hasFx && !live && !vinyl) return '';
@@ -467,7 +487,7 @@
         '');
     }
 
-    if (s.bgImage || behind) {
+    if (s.bgImage || behind || s.aurora.on) {
       const a = s.panelOpacity.toFixed(2);
       out.push('/* See-through panels */',
         `:root {`,
@@ -497,9 +517,37 @@
           `  background-position: center !important;`,
           `}`,
           '');
-      } else {
+      } else if (behind) {
         out.push(`html { background-color: #${colors.sidebar} !important; }`, '');
       }
+    }
+
+    if (s.aurora.on) {
+      const [c1, c2, c3] = auroraColors(colors, s.aurora).map(C.rgbString);
+      const k = s.aurora.intensity;
+      const al = v => (v * k).toFixed(2);
+      out.push('/* Glowing background: soft colour drifting behind the see-through panels */',
+        `.Root__top-container { isolation: isolate; }`,
+        `.Root__top-container::before {`,
+        `  content: ''; position: fixed; inset: -25%; z-index: -1; pointer-events: none;`,
+        `  background:`,
+        `    radial-gradient(32% 32% at 22% 24%, rgba(${c1}, ${al(0.75)}), transparent 72%),`,
+        `    radial-gradient(28% 30% at 80% 30%, rgba(${c2}, ${al(0.6)}), transparent 72%),`,
+        `    radial-gradient(34% 30% at 52% 84%, rgba(${c3}, ${al(0.55)}), transparent 72%);`,
+        `  animation: gel-aurora 28s ease-in-out infinite alternate;`,
+        `}`,
+        `@keyframes gel-aurora { 50% { transform: translate(4%, 3%) scale(1.08); } 100% { transform: translate(-3%, 5%) scale(0.95); } }`,
+        `@media (prefers-reduced-motion: reduce) { .Root__top-container::before { animation: none; } }`,
+        '');
+    }
+
+    if (s.glassEdges) {
+      const dark = C.isDark(colors.main);
+      const edge = dark ? '255,255,255' : '0,0,0';
+      out.push('/* Glass edges */',
+        `.Root__nav-bar, .Root__main-view, .Root__right-sidebar, .Root__now-playing-bar, .main-contextMenu-menu {`,
+        `  box-shadow: inset 0 0 0 1px rgba(${edge}, ${dark ? 0.09 : 0.07}), inset 0 1px 0 rgba(${edge}, ${dark ? 0.12 : 0.05}), 0 20px 50px -25px rgba(0,0,0,${dark ? 0.6 : 0.25}) !important;`,
+        `}`, '');
     }
 
     out.push(...layoutCss(s, colors));
@@ -520,7 +568,7 @@
     THEME_FOLDER, SCHEME, COLOR_KEYS, ORIGINAL, FONTS,
     defaultStyle, generatePalette, sanitizeColors, sanitizeStyle, fontFamilyFor, headingFamilyFor, googleFontsUrl, isWebFont,
     buildColorIni, buildUserCss,
-    buildThemeJs, defaultLayout, sanitizeLayout, LOGO_MODES, PLAYER_STYLES, ART_STYLES, DYNAMIC_MODES,
+    buildThemeJs, auroraColors, isSeeThrough, defaultLayout, sanitizeLayout, LOGO_MODES, PLAYER_STYLES, ART_STYLES, DYNAMIC_MODES,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else (root.Gel = root.Gel || {}).themegen = api;

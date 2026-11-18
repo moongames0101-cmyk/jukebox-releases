@@ -7,6 +7,7 @@
     ? `M${ox + x * size} ${oy + y * size}h${size}v${size}h${-size}z` : '').join('')).join('');
 
   const GLYPHS = {
+    jelly: { name: 'Gel the jelly', paths: [{ d: 'M12 1.5c1.1 1.9 3.4 3 5.3 4.5 2.6 2.3 4.1 4.9 4.1 7.9 0 4.5-4.1 7.5-9.4 7.5s-9.4-3-9.4-7.5c0-3 1.5-5.6 4.1-7.9 1.9-1.5 4.2-2.6 5.3-4.5z' + ell(9.2, 13.9, 1.35, 1.75) + ell(14.8, 13.9, 1.35, 1.75) + 'M10.6 16.6q1.4 1.3 2.8 0l.5.5q-1.9 1.9-3.8 0z', r: 'evenodd' }] },
     gel: { name: 'Gel', paths: [{ d: circ(8.5, 9, 6), o: 0.85 }, { d: circ(15.5, 9, 6), o: 0.85 }, { d: circ(12, 15.5, 6), o: 0.85 }] },
     note: { name: 'Music note', paths: [{ d: 'M9 18.5a3 3 0 1 1-2-2.83V5l11-2v12.5a3 3 0 1 1-2-2.83V7.2L9 8.4z' }] },
     vinyl: { name: 'Record', paths: [{ d: circ(12, 12, 10) + circ(12, 12, 4.2), r: 'evenodd' }, { d: circ(12, 12, 2.6) + circ(12, 12, 1), r: 'evenodd', o: 0.7 }] },
