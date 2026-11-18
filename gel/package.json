@@ -1,0 +1,77 @@
+{
+  "name": "gel",
+  "productName": "Gel",
+  "version": "1.0.0",
+  "description": "Design themes for Spotify and apply them with Spicetify",
+  "main": "main.js",
+  "author": "Gel",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.js",
+    "dist:win": "electron-builder --win nsis --x64 --publish never"
+  },
+  "build": {
+    "appId": "app.gel.themes",
+    "productName": "Gel",
+    "copyright": "Made for you",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "build/icon.ico",
+      "build/icon.png",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Gel",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "artifactName": "Gel-Setup.exe",
+      "differentialPackage": false,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "afterPack": "./scripts/after-pack.js",
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://github.com/moongames0101-cmyk/jukebox-releases/releases/download/gel",
+        "channel": "latest"
+      }
+    ]
+  },
+  "devDependencies": {
+    "electron": "45.3.4",
+    "electron-builder": "26.18.0",
+    "resedit": "^2.0.0"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moongames0101-cmyk/jukebox-releases.git"
+  }
+}

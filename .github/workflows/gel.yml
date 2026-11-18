@@ -1,0 +1,75 @@
+# Builds Gel, the Spotify theme app for Windows, and publishes it to the "gel" release.
+#
+# Gel checks that release a few seconds after it opens (and every few hours), downloads
+# new versions in the background, and installs them when you restart it.
+#
+# - Every change to gel/ is built and published. The version is 1.0.<run number>.
+# - Actions → "Gel (Windows app)" → Run workflow publishes the current code again.
+# - The gel release is a pre-release that is never marked "latest", so jukebox updates
+#   aren't affected, and this workflow never touches the jukebox or phone-app releases.
+name: Gel (Windows app)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'gel/**'
+      - '.github/workflows/gel.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gel-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: gel
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: gel/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Build the installer
+        run: npx electron-builder --win nsis --x64 --publish never -c.extraMetadata.version=1.0.${{ github.run_number }}
+
+      - name: Check the update files
+        run: |
+          test -f dist/Gel-Setup.exe
+          grep -q "version: 1.0.${{ github.run_number }}" dist/latest.yml
+          grep -q "Gel-Setup.exe" dist/latest.yml
+          cat dist/latest.yml
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Gel-Setup
+          path: gel/dist/Gel-Setup.exe
+
+      - name: Publish to the gel release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view gel >/dev/null 2>&1; then
+            gh release create gel --title "Gel (Spotify themes for Windows)" --prerelease --latest=false \
+              --notes "Gel designs Spotify themes and applies them with Spicetify. Download Gel-Setup.exe once; after that Gel updates itself from this release."
+          fi
+          # The installer goes up first, then latest.yml, so Gel never sees a new version before its file is there.
+          gh release upload gel dist/Gel-Setup.exe --clobber
+          gh release upload gel dist/latest.yml --clobber
