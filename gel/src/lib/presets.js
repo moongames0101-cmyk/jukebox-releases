@@ -144,7 +144,7 @@
   };
   for (const p of seeds) {
     const look = LOOKS[p.id];
-    p.style = Object.assign({}, p.style, { layout: look ? Object.assign({ logo: 'glyph' }, look) : { logo: 'keep' } });
+    p.style = Object.assign({}, p.style, { layout: look ? Object.assign({ logo: 'glyph', dj: 'theme' }, look) : { logo: 'keep', dj: 'keep' } });
   }
 
   const PRESETS = seeds.map(p => ({

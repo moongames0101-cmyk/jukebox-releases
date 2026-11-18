@@ -211,8 +211,10 @@
 
     // Layout
     const L = style.layout;
-    el.classList.remove('logo-keep', 'logo-glyph', 'logo-image', 'logo-hide', 'art-square', 'art-rounded', 'art-circle', 'art-vinyl', 'player-normal', 'player-floating');
-    el.classList.add(`logo-${L.logo}`, `art-${L.art}`, `player-${L.player}`);
+    el.classList.remove('logo-keep', 'logo-glyph', 'logo-image', 'logo-hide', 'art-square', 'art-rounded', 'art-circle', 'art-vinyl', 'player-normal', 'player-floating', 'dj-keep', 'dj-theme', 'dj-image', 'dj-hide');
+    el.classList.add(`logo-${L.logo}`, `art-${L.art}`, `player-${L.player}`, `dj-${L.dj}`);
+    if (L.dj === 'theme' || L.dj === 'image') el.style.setProperty('--p-dj', `url("${T.djArtUrl(colors, style)}")`);
+    else el.style.removeProperty('--p-dj');
     el.classList.toggle('declutter', L.declutter);
     el.classList.toggle('scrollbars', L.scrollbars);
     el.classList.toggle('bouncy', L.bouncy);
@@ -623,6 +625,12 @@
     setRadio('player', L.player);
     setRadio('art', L.art);
     setRadio('dynamic', state.theme.style.dynamic);
+    setRadio('dj', L.dj === 'image' && !L.djImage ? 'theme' : L.dj);
+    $('#djPicWrap').hidden = L.dj !== 'image';
+    $('#djThumb').style.backgroundImage = L.djImage ? `url("${L.djImage}")` : '';
+    $('#djHelp').textContent = L.dj === 'hide'
+      ? 'DJ disappears from Home, Your Library and search. You can still start it from your phone.'
+      : "Redraws the DJ tile on Home, in Your Library and in search. While DJ is playing, the player gets a glowing ring and a DJ badge. DJ's voice stays the same.";
     $('#glyphGrid').hidden = L.logo !== 'glyph';
     $('#logoPicWrap').hidden = L.logo !== 'image';
     $('#logoThumb').style.backgroundImage = L.logoImage ? `url("${L.logoImage}")` : '';
@@ -651,6 +659,18 @@
     e.target.value = '';
     if (!file) return;
     try { layoutChanged({ logo: 'image', logoImage: await picture.logo(file) }); }
+    catch (err) { toast(err.message, true); }
+  });
+  document.querySelectorAll('[data-dj]').forEach(b => b.addEventListener('click', () => {
+    if (b.dataset.dj === 'image' && !state.theme.style.layout.djImage) { $('#djInput').click(); return; }
+    layoutChanged({ dj: b.dataset.dj });
+  }));
+  $('#djChoose').addEventListener('click', () => $('#djInput').click());
+  $('#djInput').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try { layoutChanged({ dj: 'image', djImage: await picture.logo(file, 300) }); }
     catch (err) { toast(err.message, true); }
   });
   document.querySelectorAll('[data-player]').forEach(b => b.addEventListener('click', () => layoutChanged({ player: b.dataset.player })));

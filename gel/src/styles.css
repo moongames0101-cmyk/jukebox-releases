@@ -720,6 +720,12 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: var(--focu
 .p-shelf { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 0 14px 16px; }
 .p-card { padding: 10px; border-radius: var(--p-radius); background: var(--spice-player); min-width: 0; }
 .p-card.hover { background: var(--spice-card); }
+.p-dj-art { position: relative; display: grid !important; place-items: end start; background: linear-gradient(135deg, #5b5b66, #2a2a30); overflow: hidden; }
+.p-dj-art i { font: 900 clamp(18px, 2.4vw, 34px)/1 'Segoe UI Black', 'Arial Black', sans-serif; font-style: normal; color: rgba(255,255,255,.85); padding: 0 0 8% 9%; letter-spacing: -0.04em; }
+.preview.dj-theme .p-dj-art, .preview.dj-image .p-dj-art { background: var(--p-dj) center / cover no-repeat; }
+.preview.dj-theme .p-dj-art i, .preview.dj-image .p-dj-art i { display: none; }
+.preview.dj-theme .p-dj, .preview.dj-image .p-dj { box-shadow: 0 0 0 1px rgba(var(--spice-rgb-button-active), .5), 0 10px 26px -10px rgba(var(--spice-rgb-button-active), .8); }
+.preview.dj-hide .p-dj { display: none; }
 .p-card .p-cover { width: 100%; height: auto; aspect-ratio: 1; margin-bottom: 8px; box-shadow: 0 8px 20px rgba(var(--spice-rgb-shadow), .45); }
 .p-card b { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .p-card small { display: block; color: var(--spice-subtext); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

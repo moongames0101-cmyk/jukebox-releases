@@ -105,9 +105,12 @@
   const PLAYER_STYLES = ['normal', 'floating'];
   const ART_STYLES = ['square', 'rounded', 'circle', 'vinyl'];
   const DYNAMIC_MODES = ['off', 'accent', 'full'];
+  const DJ_MODES = ['keep', 'theme', 'image', 'hide'];
+  // Spotify's DJ lives at this playlist address
+  const DJ_ID = '37i9dQZF1EYkqdzj48dyYq';
 
   function defaultLayout() {
-    return { logo: 'keep', glyph: 'gel', logoImage: null, player: 'normal', art: 'square', declutter: false, scrollbars: false, bouncy: false };
+    return { logo: 'keep', glyph: 'gel', logoImage: null, player: 'normal', art: 'square', declutter: false, scrollbars: false, bouncy: false, dj: 'keep', djImage: null };
   }
 
   function sanitizeLayout(layout) {
@@ -119,6 +122,9 @@
     if (!PLAYER_STYLES.includes(l.player)) l.player = 'normal';
     if (!ART_STYLES.includes(l.art)) l.art = 'square';
     l.declutter = !!l.declutter; l.scrollbars = !!l.scrollbars; l.bouncy = !!l.bouncy;
+    if (!DJ_MODES.includes(l.dj)) l.dj = 'keep';
+    if (l.djImage && !/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(l.djImage)) l.djImage = null;
+    if (l.dj === 'image' && !l.djImage) l.dj = 'theme';
     return l;
   }
 
@@ -258,9 +264,66 @@
   ].join(', ');
   const NOW_ART = '.main-nowPlayingWidget-coverArt img, .main-nowPlayingWidget-coverArt .cover-art, .main-nowPlayingWidget-coverArtContainer [data-testid="cover-art-image"]';
 
-  function layoutCss(s) {
+  function djArtOptions(colors, s) {
     const L = s.layout;
-    const out = [];
+    const au = s.aurora && s.aurora.on ? auroraColors(colors, s.aurora) : null;
+    const accent = colors['button-active'];
+    const second = au ? au[1] : C.rgbToHex(C.hslToRgb(Object.assign(C.rgbToHsl(C.hexToRgb(accent)), {})));
+    const shifted = (() => { const h = C.rgbToHsl(C.hexToRgb(accent)); return C.rgbToHex(C.hslToRgb({ h: h.h + 40, s: Math.max(h.s, 0.5), l: C.clamp(h.l, 0.45, 0.62) })); })();
+    return {
+      accent,
+      second: au ? au[1] : shifted,
+      deep: C.mix(colors.main, '000000', C.isDark(colors.main) ? 0.2 : 0.75),
+      ink: 'FFFFFF',
+      glyph: L.logo === 'glyph' ? L.glyph : 'gel',
+    };
+  }
+
+  function djArtUrl(colors, s) {
+    if (s.layout.dj === 'image' && s.layout.djImage) return s.layout.djImage;
+    return GLYPHS.djArtDataUrl(djArtOptions(colors, s));
+  }
+
+  function djCss(colors, s) {
+    const mode = s.layout.dj;
+    if (mode === 'keep') return [];
+    const where = [
+      `a[href*="${DJ_ID}"]`, `[aria-labelledby*="${DJ_ID}"]`, `[data-uri*="${DJ_ID}"]`,
+      `.main-card-card:has(a[href*="${DJ_ID}"])`, `[role="row"]:has([aria-labelledby*="${DJ_ID}"])`,
+    ];
+    if (mode === 'hide') {
+      return ['/* DJ: hidden */',
+        `.main-card-card:has(a[href*="${DJ_ID}"]), [role="row"]:has([aria-labelledby*="${DJ_ID}"]),`,
+        `[data-testid="grid-container"] > div:has(a[href*="${DJ_ID}"]), button[aria-label="DJ"], [data-testid="dj-button"] { display: none !important; }`, ''];
+    }
+    const url = djArtUrl(colors, s);
+    return ['/* DJ: new artwork everywhere DJ shows up, and a glow while DJ is playing */',
+      `${where.map(w => `${w} img`).join(',\n')} {`,
+      `  content: url("${url}") !important;`,
+      `  object-fit: cover !important;`,
+      `}`,
+      `.main-card-card:has(a[href*="${DJ_ID}"]) {`,
+      `  box-shadow: 0 0 0 1px rgba(var(--spice-rgb-button-active), 0.5), 0 10px 30px -10px rgba(var(--spice-rgb-button-active), 0.7) !important;`,
+      `}`,
+      `body.gel-dj .main-nowPlayingWidget-coverArt { position: relative; overflow: visible !important; }`,
+      `body.gel-dj .main-nowPlayingWidget-coverArt img, body.gel-dj .main-nowPlayingWidget-coverArt .cover-art {`,
+      `  box-shadow: 0 0 0 2px var(--spice-button-active), 0 0 18px 2px rgba(var(--spice-rgb-button-active), 0.75) !important;`,
+      `  animation: gel-dj-pulse 2.4s ease-in-out infinite;`,
+      `}`,
+      `body.gel-dj .main-nowPlayingWidget-coverArt::after {`,
+      `  content: 'DJ'; position: absolute; right: -6px; bottom: -6px; z-index: 2;`,
+      `  padding: 1px 6px; border-radius: 999px; font-size: 10px; font-weight: 900; letter-spacing: .02em;`,
+      `  color: var(--spice-main); background: var(--spice-button-active);`,
+      `  box-shadow: 0 0 10px rgba(var(--spice-rgb-button-active), 0.9);`,
+      `}`,
+      `@keyframes gel-dj-pulse { 50% { box-shadow: 0 0 0 2px var(--spice-button-active), 0 0 28px 6px rgba(var(--spice-rgb-button-active), 0.55); } }`,
+      `@media (prefers-reduced-motion: reduce) { body.gel-dj .main-nowPlayingWidget-coverArt img { animation: none; } }`,
+      ''];
+  }
+
+  function layoutCss(s, colors) {
+    const L = s.layout;
+    const out = djCss(colors, s);
     if (L.logo === 'hide') {
       out.push('/* Logo: hidden */', `${LOGO_SEL} { visibility: hidden !important; }`, '');
     } else if (L.logo === 'glyph') {
@@ -341,7 +404,8 @@
       ? { mode: s.dynamic, dark: C.isDark(colors.main), text: '#' + colors.text, main: '#' + colors.main, alpha: isSeeThrough(s) ? Number(s.panelOpacity.toFixed(2)) : 1 }
       : null;
     const vinyl = s.layout.art === 'vinyl';
-    if (!hasFx && !live && !vinyl) return '';
+    const djGlow = s.layout.dj === 'theme' || s.layout.dj === 'image';
+    if (!hasFx && !live && !vinyl && !djGlow) return '';
 
     const L = ['// Made with Gel: Gel rewrites this file every time you apply a theme.', '(function () {'];
     if (hasFx) {
@@ -362,11 +426,13 @@
         '  }',
         "  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startFx); else startFx();");
     }
-    if (live || vinyl) {
+    if (live || vinyl || djGlow) {
       L.push(
         '  // ---- Player hooks ----',
         '  var live = ' + JSON.stringify(live) + ';',
         '  var vinyl = ' + JSON.stringify(vinyl) + ';',
+        '  var djGlow = ' + JSON.stringify(djGlow) + ';',
+        "  var DJ_ID = '" + DJ_ID + "';",
         '  var liveColors = ' + LIVE.gelLiveColors.toString() + ';',
         '  function whenReady(cb) {',
         '    if (window.Spicetify && Spicetify.Player && Spicetify.Player.addEventListener && document.body) cb();',
@@ -379,6 +445,16 @@
         "      P.addEventListener('onplaypause', sync);",
         "      P.addEventListener('songchange', sync);",
         '      sync();',
+        '    }',
+        '    if (djGlow) {',
+        '      var djSync = function () {',
+        '        var d = P.data || {};',
+        "        var ctx = (d.context && d.context.uri) || d.context_uri || '';",
+        "        document.body.classList.toggle('gel-dj', String(ctx).indexOf(DJ_ID) !== -1);",
+        '      };',
+        "      P.addEventListener('songchange', djSync);",
+        "      P.addEventListener('onplaypause', djSync);",
+        '      djSync();',
         '    }',
         '    if (live) {',
         '      var root = document.documentElement;',
@@ -568,7 +644,7 @@
     THEME_FOLDER, SCHEME, COLOR_KEYS, ORIGINAL, FONTS,
     defaultStyle, generatePalette, sanitizeColors, sanitizeStyle, fontFamilyFor, headingFamilyFor, googleFontsUrl, isWebFont,
     buildColorIni, buildUserCss,
-    buildThemeJs, auroraColors, isSeeThrough, defaultLayout, sanitizeLayout, LOGO_MODES, PLAYER_STYLES, ART_STYLES, DYNAMIC_MODES,
+    buildThemeJs, auroraColors, isSeeThrough, djArtUrl, DJ_ID, DJ_MODES, defaultLayout, sanitizeLayout, LOGO_MODES, PLAYER_STYLES, ART_STYLES, DYNAMIC_MODES,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else (root.Gel = root.Gel || {}).themegen = api;

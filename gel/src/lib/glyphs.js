@@ -48,7 +48,29 @@
     return 'data:image/svg+xml,' + encodeURIComponent(glyphSvg(id, color));
   }
 
-  const api = { GLYPHS, glyphSvg, glyphDataUrl };
+  // DJ artwork in a theme's colours: glowing gradient, sound rings, the theme's emblem and a big "DJ"
+  function djArtSvg(opts) {
+    const a = '#' + String(opts.accent).replace(/^#/, '');
+    const b = '#' + String(opts.second || opts.accent).replace(/^#/, '');
+    const d = '#' + String(opts.deep).replace(/^#/, '');
+    const ink = '#' + String(opts.ink || 'FFFFFF').replace(/^#/, '');
+    const g = GLYPHS[opts.glyph] || GLYPHS.gel;
+    const emblem = g.paths.map(p => `<path d="${p.d}" fill="${ink}"${p.o ? ` fill-opacity="${p.o}"` : ''}${p.r ? ` fill-rule="${p.r}"` : ''}${p.t ? ` transform="${p.t}"` : ''}/>`).join('');
+    const rings = [70, 120, 170, 220, 270].map((r, i) => `<circle cx="40" cy="260" r="${r}" fill="none" stroke="${ink}" stroke-opacity="${(0.22 - i * 0.035).toFixed(3)}" stroke-width="${10 - i * 1.5}"/>`).join('');
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset=".55" stop-color="${b}"/><stop offset="1" stop-color="${d}"/></linearGradient>
+<radialGradient id="h" cx=".78" cy=".2" r=".6"><stop offset="0" stop-color="#fff" stop-opacity=".45"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>
+<rect width="300" height="300" fill="url(#g)"/><rect width="300" height="300" fill="url(#h)"/>${rings}
+<g transform="translate(196 34) scale(3.1)">${emblem}</g>
+<text x="26" y="262" font-family="Segoe UI Black, Arial Black, Arial, sans-serif" font-weight="900" font-size="116" letter-spacing="-6" fill="${ink}">DJ</text>
+</svg>`;
+  }
+
+  function djArtDataUrl(opts) {
+    return 'data:image/svg+xml,' + encodeURIComponent(djArtSvg(opts));
+  }
+
+  const api = { GLYPHS, glyphSvg, glyphDataUrl, djArtSvg, djArtDataUrl };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else (root.Gel = root.Gel || {}).glyphs = api;
 })(typeof window !== 'undefined' ? window : globalThis);

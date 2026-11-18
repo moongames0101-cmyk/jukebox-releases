@@ -164,7 +164,7 @@ test('every preset builds balanced CSS and runnable theme.js', () => {
     const css = T.buildUserCss(p);
     assert.strictEqual((css.match(/{/g) || []).length, (css.match(/}/g) || []).length, p.id);
     const js = T.buildThemeJs(p);
-    const needsJs = p.style.fx.effect !== 'none' || p.style.layout.art === 'vinyl' || p.style.dynamic !== 'off';
+    const needsJs = p.style.fx.effect !== 'none' || p.style.layout.art === 'vinyl' || p.style.dynamic !== 'off' || ['theme', 'image'].includes(p.style.layout.dj);
     if (!needsJs) assert.strictEqual(js, '', p.id);
     else assert.doesNotThrow(() => new Function(js), p.id);
   }
@@ -260,4 +260,23 @@ test('Glass and glow themes come first and use the glow', () => {
     assert.ok(T.isSeeThrough(p.style), p.id);
   }
   assert.strictEqual(PRESETS.find(p => p.id === 'gel-glass').style.layout.glyph, 'jelly');
+});
+
+test('DJ: theme art, own picture, Spotify\'s, hidden', () => {
+  const css = l => T.buildUserCss({ name: 'd', colors: T.ORIGINAL, style: Object.assign(T.defaultStyle(), { layout: l }) });
+  assert.ok(!css({ dj: 'keep' }).includes(T.DJ_ID));
+  const art = css({ dj: 'theme', logo: 'glyph', glyph: 'sakura' });
+  assert.ok(art.includes(`a[href*="${T.DJ_ID}"] img`) && art.includes('content: url("data:image/svg+xml,'));
+  assert.ok(art.includes('body.gel-dj'));
+  assert.strictEqual((art.match(/{/g) || []).length, (art.match(/}/g) || []).length);
+  const img = 'data:image/png;base64,' + Buffer.from('png').toString('base64');
+  assert.ok(css({ dj: 'image', djImage: img }).includes(img));
+  assert.ok(css({ dj: 'hide' }).includes('display: none'));
+  assert.strictEqual(T.sanitizeLayout({ dj: 'image' }).dj, 'theme', 'no picture falls back to theme art');
+  const svg = decodeURIComponent(T.djArtUrl(T.ORIGINAL, T.sanitizeStyle({ layout: { dj: 'theme' } })).split(',')[1]);
+  assert.match(svg, /^<svg[\s\S]*>DJ<\/text>[\s\S]*<\/svg>$/);
+  const js = T.buildThemeJs({ name: 'd', colors: T.ORIGINAL, style: Object.assign(T.defaultStyle(), { layout: { dj: 'theme' } }) });
+  assert.ok(js.includes("var DJ_ID = '37i9dQZF1EYkqdzj48dyYq'") && js.includes('gel-dj'));
+  assert.doesNotThrow(() => new Function(js));
+  for (const p of PRESETS) assert.strictEqual(p.style.layout.dj, p.id === 'original' ? 'keep' : 'theme', p.id);
 });

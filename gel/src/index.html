@@ -223,6 +223,22 @@
           </div>
 
           <div class="field">
+            <span class="label">DJ</span>
+            <div class="segmented" role="radiogroup" aria-label="DJ look">
+              <button role="radio" data-dj="theme" aria-checked="false">Theme art</button>
+              <button role="radio" data-dj="image" aria-checked="false">Picture</button>
+              <button role="radio" data-dj="keep" aria-checked="false">Spotify's</button>
+              <button role="radio" data-dj="hide" aria-checked="false">Hidden</button>
+            </div>
+            <div class="logo-pic" id="djPicWrap" hidden>
+              <span class="logo-thumb" id="djThumb"></span>
+              <button class="btn ghost" id="djChoose">Choose picture…</button>
+              <input type="file" id="djInput" accept="image/png,image/jpeg,image/webp" hidden>
+            </div>
+            <p class="help" id="djHelp">Redraws the DJ tile on Home, in Your Library and in search. While DJ is playing, the player gets a glowing ring and a DJ badge. DJ's voice stays the same.</p>
+          </div>
+
+          <div class="field">
             <span class="label">Player bar</span>
             <div class="segmented" role="radiogroup" aria-label="Player bar">
               <button role="radio" data-player="normal" aria-checked="true">Docked</button>
@@ -242,7 +258,7 @@
           </div>
 
           <div class="field toggles">
-            <label class="switch"><input type="checkbox" id="declutter"><span class="switch-track" aria-hidden="true"></span> Hide clutter <small>What's New, Friend Activity and upgrade buttons</small></label>
+            <label class="switch"><input type="checkbox" id="declutter"><span class="switch-track" aria-hidden="true"></span><span>Hide clutter <small>What's New, Friend Activity and upgrade buttons</small></span></label>
             <label class="switch"><input type="checkbox" id="scrollbars"><span class="switch-track" aria-hidden="true"></span> Accent-coloured scrollbars</label>
             <label class="switch"><input type="checkbox" id="bouncy"><span class="switch-track" aria-hidden="true"></span> Cards lift when you hover</label>
           </div>
@@ -353,7 +369,7 @@
                   </ol>
                   <h3 class="p-shelf-title p-heading">Jump back in</h3>
                   <div class="p-shelf">
-                    <div class="p-card"><span class="p-cover c2"></span><b>Daily Mix 1</b><small>Mira Vale, Kaito Mori</small></div>
+                    <div class="p-card p-dj"><span class="p-cover p-dj-art"><i>DJ</i></span><b>DJ</b><small>Your personal AI DJ</small></div>
                     <div class="p-card hover"><span class="p-cover c5"></span><b>Focus Flow</b><small>Deep work, no words</small></div>
                     <div class="p-card"><span class="p-cover c6"></span><b>Paper Planes</b><small>The Lowlights</small></div>
                     <div class="p-card"><span class="p-cover c4"></span><b>Sunday Reset</b><small>Slow mornings</small></div>
