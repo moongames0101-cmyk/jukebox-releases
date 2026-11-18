@@ -21,12 +21,15 @@ Spicetify only partly supports it. Either switch to Spotify's own installer
 
 ## Features
 
-- 49 built-in themes in a swatch book, grouped into Anime, Font lovers, Moods and weather, Classics, and Light and bright
+- 13 built-in themes, laid out as a swatch book
 - Build a full 18-colour palette from 3 colours, or from a picture
 - Fine-tune every Spicetify colour, with a live preview and a contrast check
-- 50+ fonts (including Japanese-style ones) for the main text, plus a separate heading font; roundness; glow on play buttons
+- Fonts (Google Fonts or any font on your PC), roundness, glow on play buttons
 - Background picture with dimming, see-through panels and frosted glass
-- Animated backgrounds: petals, autumn leaves, snow, rain, bubbles, hearts, sparkles, twinkling stars, embers and fireflies (in front of or behind the panels)
+- Animated backgrounds: falling petals, snow, fireflies (in front of or behind the panels)
+- Layout: replace the Spotify logo with a theme emblem (27 to pick from), your own picture, or hide it; floating player bar; square, rounded, circle or spinning-record album covers; hide clutter; accent scrollbars; cards that lift on hover
+- Colours that follow the song: Spotify recolours itself from each album cover (accent only or the whole theme), keeping text readable
+- Spotify add-ons from Spicetify, switched on from Gel: full-screen now playing, lyrics page, pop-up lyrics, trash bin, better shuffle, loop part of a song, keyboard shortcuts, bookmarks, new releases page
 - Your own CSS
 - Save themes, export and import them as `.gel.json`
 

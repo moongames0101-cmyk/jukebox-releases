@@ -108,5 +108,19 @@
     try { return resizeToDataUrl(img); } finally { URL.revokeObjectURL(url); }
   }
 
-  root.Gel.picture = { analyse, shrink, seedFromClusters };
+  // Logos: fit inside a small square PNG, keeping transparency
+  async function logo(file, size = 160) {
+    const { img, url } = await loadImage(file);
+    try {
+      const scale = Math.min(1, size / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.max(1, Math.round(img.naturalWidth * scale));
+      const h = Math.max(1, Math.round(img.naturalHeight * scale));
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      return cv.toDataURL('image/png');
+    } finally { URL.revokeObjectURL(url); }
+  }
+
+  root.Gel.picture = { analyse, shrink, logo, seedFromClusters };
 })(window);

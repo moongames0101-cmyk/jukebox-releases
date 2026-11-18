@@ -3,6 +3,8 @@
   const isNode = typeof module !== 'undefined' && module.exports;
   const C = isNode ? require('./color.js') : root.Gel.color;
   const FX = isNode ? require('./fx.js') : root.Gel.fx;
+  const GLYPHS = isNode ? require('./glyphs.js') : root.Gel.glyphs;
+  const LIVE = isNode ? require('./live.js') : root.Gel.live;
 
   const THEME_FOLDER = 'Gel';
   const SCHEME = 'Gel';
@@ -99,8 +101,29 @@
   ];
   const isWebFont = id => FONTS.some(f => f.id === id) && id !== 'default' && id !== 'custom';
 
+  const LOGO_MODES = ['keep', 'glyph', 'image', 'hide'];
+  const PLAYER_STYLES = ['normal', 'floating'];
+  const ART_STYLES = ['square', 'rounded', 'circle', 'vinyl'];
+  const DYNAMIC_MODES = ['off', 'accent', 'full'];
+
+  function defaultLayout() {
+    return { logo: 'keep', glyph: 'gel', logoImage: null, player: 'normal', art: 'square', declutter: false, scrollbars: false, bouncy: false };
+  }
+
+  function sanitizeLayout(layout) {
+    const l = Object.assign(defaultLayout(), layout || {});
+    if (!LOGO_MODES.includes(l.logo)) l.logo = 'keep';
+    if (!GLYPHS.GLYPHS[l.glyph]) l.glyph = 'gel';
+    if (l.logoImage && !/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(l.logoImage)) l.logoImage = null;
+    if (l.logo === 'image' && !l.logoImage) l.logo = 'glyph';
+    if (!PLAYER_STYLES.includes(l.player)) l.player = 'normal';
+    if (!ART_STYLES.includes(l.art)) l.art = 'square';
+    l.declutter = !!l.declutter; l.scrollbars = !!l.scrollbars; l.bouncy = !!l.bouncy;
+    return l;
+  }
+
   function defaultStyle() {
-    return { font: 'default', customFont: '', headingFont: 'same', radius: 8, glow: false, bgImage: null, bgDim: 0.55, bgBlur: 0, panelOpacity: 0.72, customCSS: '', fx: FX.defaultFx() };
+    return { font: 'default', customFont: '', headingFont: 'same', radius: 8, glow: false, bgImage: null, bgDim: 0.55, bgBlur: 0, panelOpacity: 0.72, customCSS: '', fx: FX.defaultFx(), layout: defaultLayout(), dynamic: 'off' };
   }
 
   /**
@@ -184,6 +207,8 @@
     if (s.bgImage && !/^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(s.bgImage)) s.bgImage = null;
     s.customCSS = String(s.customCSS || '');
     s.fx = FX.sanitizeFx(s.fx);
+    s.layout = sanitizeLayout(s.layout);
+    if (!DYNAMIC_MODES.includes(s.dynamic)) s.dynamic = 'off';
     return s;
   }
 
@@ -204,6 +229,169 @@
   }
 
   const FALLBACK = 'CircularSp, CircularSp-Arab, CircularSp-Hebr, CircularSp-Cyrl, CircularSp-Grek, CircularSp-Deva, sans-serif';
+
+  const LOGO_SEL = '.main-globalNav-link-icon, .main-appShell-logo, .main-navBar-logo';
+  const LOGO_KIDS = '.main-globalNav-link-icon *, .main-appShell-logo *, .main-navBar-logo *';
+  const ART_SEL = [
+    '.main-cardImage-image', '.main-cardImage-imageWrapper', '.main-entityHeader-image',
+    '.main-nowPlayingWidget-coverArt img', '.main-nowPlayingWidget-coverArt .cover-art', '[data-testid="cover-art-image"]',
+  ].join(', ');
+  const NOW_ART = '.main-nowPlayingWidget-coverArt img, .main-nowPlayingWidget-coverArt .cover-art, .main-nowPlayingWidget-coverArtContainer [data-testid="cover-art-image"]';
+
+  function layoutCss(s) {
+    const L = s.layout;
+    const out = [];
+    if (L.logo === 'hide') {
+      out.push('/* Logo: hidden */', `${LOGO_SEL} { visibility: hidden !important; }`, '');
+    } else if (L.logo === 'glyph') {
+      const url = GLYPHS.glyphDataUrl(L.glyph, '000000');
+      out.push('/* Logo: theme emblem in the accent colour (follows the song when that is on) */',
+        `${LOGO_SEL} {`,
+        `  background-color: var(--spice-button-active) !important;`,
+        `  -webkit-mask: url("${url}") center / contain no-repeat !important;`,
+        `  mask: url("${url}") center / contain no-repeat !important;`,
+        `}`,
+        `${LOGO_KIDS} { opacity: 0 !important; }`, '');
+    } else if (L.logo === 'image' && L.logoImage) {
+      out.push('/* Logo: your picture */',
+        `${LOGO_SEL} { background: url("${L.logoImage}") center / contain no-repeat !important; border-radius: 6px; }`,
+        `${LOGO_KIDS} { opacity: 0 !important; }`, '');
+    }
+
+    if (L.player === 'floating') {
+      const r = Math.max(10, Math.round(s.radius * 1.5));
+      out.push('/* Floating player */',
+        `.Root__now-playing-bar {`,
+        `  margin: 0 10px 10px !important;`,
+        `  border-radius: ${r}px !important;`,
+        `  overflow: hidden !important;`,
+        `  background-color: var(--spice-player) !important;`,
+        `  box-shadow: 0 12px 32px rgba(var(--spice-rgb-shadow), 0.55) !important;`,
+        `}`,
+        `.main-nowPlayingBar-nowPlayingBar { background: transparent !important; }`, '');
+    }
+
+    if (L.art !== 'square') {
+      const radius = L.art === 'rounded' ? '14px' : '50%';
+      out.push(`/* Album covers: ${L.art} */`, `${ART_SEL} { border-radius: ${radius} !important; }`, '');
+    }
+    if (L.art === 'vinyl') {
+      out.push('/* The playing cover spins like a record */',
+        `@keyframes gel-spin { to { transform: rotate(360deg); } }`,
+        `${NOW_ART} {`,
+        `  border-radius: 50% !important;`,
+        `  -webkit-mask: radial-gradient(circle, transparent 0 9%, #000 10%) !important;`,
+        `  animation: gel-spin 6s linear infinite;`,
+        `  animation-play-state: paused;`,
+        `}`,
+        `body.gel-playing ${NOW_ART.split(', ').join(`, body.gel-playing `)} { animation-play-state: running; }`,
+        `@media (prefers-reduced-motion: reduce) { ${NOW_ART} { animation: none; } }`, '');
+    }
+
+    if (L.declutter) {
+      out.push('/* Hide clutter */',
+        `.main-topBar-UpgradeButton, .main-navBar-premiumNavItem, .main-navBar-downloadItem, .main-topBar-whatsNewFeed,`,
+        `.main-globalNav-buddyFeed, button[aria-label="What's New"], button[aria-label="Friend Activity"] { display: none !important; }`, '');
+    }
+
+    if (L.scrollbars) {
+      out.push('/* Accent scrollbars */',
+        `.os-scrollbar-handle { background: rgba(var(--spice-rgb-button), 0.55) !important; border-radius: 999px !important; }`,
+        `.os-scrollbar-handle:hover, .os-scrollbar-handle.active { background: rgba(var(--spice-rgb-button), 0.85) !important; }`,
+        `::-webkit-scrollbar-thumb { background: rgba(var(--spice-rgb-button), 0.55) !important; border-radius: 999px; }`, '');
+    }
+
+    if (L.bouncy) {
+      out.push('/* Cards lift on hover */',
+        `.main-card-card { transition: transform 0.2s ease, background-color 0.3s ease !important; }`,
+        `.main-card-card:hover { transform: translateY(-4px) scale(1.02); }`,
+        `@media (prefers-reduced-motion: reduce) { .main-card-card:hover { transform: none; } }`, '');
+    }
+    return out;
+  }
+
+  /* theme.js: animations, colours that follow the song, and the spinning record */
+  function buildThemeJs(theme) {
+    const colors = sanitizeColors(theme.colors);
+    const s = sanitizeStyle(theme.style);
+    const fxCfg = FX.engineConfig(colors, s.fx);
+    const hasFx = fxCfg.effect !== 'none';
+    const behind = hasFx && s.fx.layer === 'behind';
+    const live = s.dynamic !== 'off'
+      ? { mode: s.dynamic, dark: C.isDark(colors.main), text: '#' + colors.text, main: '#' + colors.main, alpha: (s.bgImage || behind) ? Number(s.panelOpacity.toFixed(2)) : 1 }
+      : null;
+    const vinyl = s.layout.art === 'vinyl';
+    if (!hasFx && !live && !vinyl) return '';
+
+    const L = ['// Made with Gel: Gel rewrites this file every time you apply a theme.', '(function () {'];
+    if (hasFx) {
+      L.push(
+        '  // ---- Animated background ----',
+        '  var fxCfg = ' + JSON.stringify(fxCfg) + ';',
+        '  var engine = ' + FX.gelFxEngine.toString() + ';',
+        '  function startFx() {',
+        '    if (!document.body) return setTimeout(startFx, 200);',
+        "    var old = document.getElementById('gel-fx');",
+        '    if (old && old.__gel) old.__gel.destroy();',
+        '    if (old) old.remove();',
+        "    var layer = document.createElement('div');",
+        "    layer.id = 'gel-fx';",
+        "    layer.setAttribute('aria-hidden', 'true');",
+        '    document.body.appendChild(layer);',
+        '    layer.__gel = engine(layer, fxCfg);',
+        '  }',
+        "  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startFx); else startFx();");
+    }
+    if (live || vinyl) {
+      L.push(
+        '  // ---- Player hooks ----',
+        '  var live = ' + JSON.stringify(live) + ';',
+        '  var vinyl = ' + JSON.stringify(vinyl) + ';',
+        '  var liveColors = ' + LIVE.gelLiveColors.toString() + ';',
+        '  function whenReady(cb) {',
+        '    if (window.Spicetify && Spicetify.Player && Spicetify.Player.addEventListener && document.body) cb();',
+        '    else setTimeout(function () { whenReady(cb); }, 300);',
+        '  }',
+        '  whenReady(function () {',
+        '    var P = Spicetify.Player;',
+        '    if (vinyl) {',
+        "      var sync = function () { document.body.classList.toggle('gel-playing', !!P.isPlaying()); };",
+        "      P.addEventListener('onplaypause', sync);",
+        "      P.addEventListener('songchange', sync);",
+        '      sync();',
+        '    }',
+        '    if (live) {',
+        '      var root = document.documentElement;',
+        '      var names = [];',
+        '      var clearLive = function () {',
+        "        names.forEach(function (n) { root.style.removeProperty('--spice-' + n); root.style.removeProperty('--spice-rgb-' + n); });",
+        '        names = [];',
+        '      };',
+        '      var paint = function () {',
+        '        var d = P.data || {};',
+        '        var item = d.item || d.track || {};',
+        '        if (!item.uri || !Spicetify.colorExtractor) { clearLive(); return; }',
+        '        Spicetify.colorExtractor(item.uri).then(function (pal) {',
+        '          var out = liveColors(live, pal || {});',
+        '          clearLive();',
+        '          if (!out) return;',
+        '          Object.keys(out).forEach(function (n) {',
+        '            var c = out[n];',
+        "            var a = live.alpha < 1 && (n === 'main' || n === 'sidebar' || n === 'player') ? live.alpha : 1;",
+        "            root.style.setProperty('--spice-' + n, a < 1 ? 'rgba(' + c.join(',') + ',' + a + ')' : 'rgb(' + c.join(',') + ')', 'important');",
+        "            root.style.setProperty('--spice-rgb-' + n, c.join(','), 'important');",
+        '            names.push(n);',
+        '          });',
+        '        }).catch(clearLive);',
+        '      };',
+        "      P.addEventListener('songchange', paint);",
+        '      paint();',
+        '    }',
+        '  });');
+    }
+    L.push('})();', '');
+    return L.join('\n');
+  }
 
   function buildColorIni(theme) {
     const colors = sanitizeColors(theme.colors);
@@ -314,6 +502,15 @@
       }
     }
 
+    out.push(...layoutCss(s, colors));
+
+    if (s.dynamic !== 'off') {
+      out.push('/* Colours follow the song: fade between covers */',
+        `.Root__top-container, .Root__nav-bar, .Root__main-view, .Root__right-sidebar, .Root__now-playing-bar, .main-card-card {`,
+        `  transition: background-color 0.8s ease, color 0.8s ease;`,
+        `}`, '');
+    }
+
     if (s.customCSS.trim()) out.push('/* Your own CSS */', s.customCSS.trim(), '');
     if (out.length <= 3) out.push('/* Colours only: everything comes from color.ini */', '');
     return out.join('\n');
@@ -323,7 +520,7 @@
     THEME_FOLDER, SCHEME, COLOR_KEYS, ORIGINAL, FONTS,
     defaultStyle, generatePalette, sanitizeColors, sanitizeStyle, fontFamilyFor, headingFamilyFor, googleFontsUrl, isWebFont,
     buildColorIni, buildUserCss,
-    buildThemeJs: theme => FX.buildThemeJs(sanitizeColors(theme.colors), sanitizeStyle(theme.style).fx),
+    buildThemeJs, defaultLayout, sanitizeLayout, LOGO_MODES, PLAYER_STYLES, ART_STYLES, DYNAMIC_MODES,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else (root.Gel = root.Gel || {}).themegen = api;

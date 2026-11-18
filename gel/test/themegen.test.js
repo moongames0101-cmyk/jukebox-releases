@@ -103,7 +103,7 @@ test('theme.js for every effect is valid, standalone JavaScript', () => {
     const js = T.buildThemeJs({ colors: T.ORIGINAL, style: Object.assign(T.defaultStyle(), { fx: { effect: id } }) });
     assert.ok(js.includes(`"effect":"${id}"`), id);
     assert.doesNotThrow(() => new Function(js), id);
-    assert.ok(!/Gel\.|require\(/.test(js), `${id} must not depend on Gel's own code`);
+    assert.ok(!/Gel\.(color|fx|themegen|live|glyphs)|require\(|window\.Gel/.test(js), `${id} must not depend on Gel's own code`);
   }
 });
 
@@ -164,7 +164,75 @@ test('every preset builds balanced CSS and runnable theme.js', () => {
     const css = T.buildUserCss(p);
     assert.strictEqual((css.match(/{/g) || []).length, (css.match(/}/g) || []).length, p.id);
     const js = T.buildThemeJs(p);
-    if (p.style.fx.effect === 'none') assert.strictEqual(js, '', p.id);
+    const needsJs = p.style.fx.effect !== 'none' || p.style.layout.art === 'vinyl' || p.style.dynamic !== 'off';
+    if (!needsJs) assert.strictEqual(js, '', p.id);
     else assert.doesNotThrow(() => new Function(js), p.id);
   }
+});
+
+const G = require('../src/lib/glyphs.js');
+const LIVE = require('../src/lib/live.js');
+
+test('every theme has a valid logo emblem; Original keeps Spotify\'s', () => {
+  for (const p of PRESETS) {
+    if (p.id === 'original') { assert.strictEqual(p.style.layout.logo, 'keep'); continue; }
+    assert.strictEqual(p.style.layout.logo, 'glyph', p.id);
+    assert.ok(G.GLYPHS[p.style.layout.glyph], `${p.id} glyph ${p.style.layout.glyph}`);
+  }
+  for (const id of Object.keys(G.GLYPHS)) assert.match(G.glyphSvg(id, 'FF0000'), /^<svg[^>]+><path d="M[^"]+" fill="#FF0000"/, id);
+});
+
+test('layout CSS: logo modes, floating player, covers, clutter, scrollbars, bouncy cards', () => {
+  const base = { name: 'L', colors: T.ORIGINAL };
+  const css = l => T.buildUserCss(Object.assign({}, base, { style: Object.assign(T.defaultStyle(), { layout: l }) }));
+  assert.ok(!css({ logo: 'keep' }).includes('main-globalNav-link-icon'));
+  assert.ok(css({ logo: 'hide' }).includes('visibility: hidden'));
+  const glyph = css({ logo: 'glyph', glyph: 'sakura' });
+  assert.ok(glyph.includes('mask: url("data:image/svg+xml,') && glyph.includes('var(--spice-button-active)'));
+  const img = 'data:image/png;base64,' + Buffer.from('png').toString('base64');
+  assert.ok(css({ logo: 'image', logoImage: img }).includes(img));
+  assert.ok(!css({ logo: 'image', logoImage: 'javascript:alert(1)' }).includes('javascript'));
+  assert.ok(css({ player: 'floating' }).includes('/* Floating player */'));
+  assert.ok(css({ art: 'circle' }).includes('border-radius: 50% !important'));
+  const vinyl = css({ art: 'vinyl' });
+  assert.ok(vinyl.includes('@keyframes gel-spin') && vinyl.includes('body.gel-playing .main-nowPlayingWidget-coverArt img'));
+  assert.ok(css({ declutter: true }).includes('.main-topBar-UpgradeButton'));
+  assert.ok(css({ scrollbars: true }).includes('.os-scrollbar-handle'));
+  assert.ok(css({ bouncy: true }).includes('.main-card-card:hover'));
+  for (const l of [{ logo: 'glyph', glyph: 'gate' }, { art: 'vinyl', player: 'floating', declutter: true, scrollbars: true, bouncy: true }]) {
+    const c = css(l);
+    assert.strictEqual((c.match(/{/g) || []).length, (c.match(/}/g) || []).length);
+  }
+});
+
+test('colours that follow the song stay readable', () => {
+  const pals = [LIVE.SAMPLE_PALETTE, { VIBRANT: '#FFFF00', DARK_VIBRANT: '#FFFFAA', LIGHT_VIBRANT: '#FFFFFF' }, { VIBRANT: '#101010', DARK_VIBRANT: '#000000', LIGHT_VIBRANT: '#202020' }];
+  for (const dark of [true, false]) {
+    for (const mode of ['accent', 'full']) {
+      for (const pal of pals) {
+        const text = dark ? '#F0F0F0' : '#151515';
+        const main = dark ? '#121212' : '#FAFAFA';
+        const out = LIVE.gelLiveColors({ mode, dark, text, main }, pal);
+        const hex = c => c.map(v => v.toString(16).padStart(2, '0')).join('');
+        const bg = out.main ? hex(out.main) : main.slice(1);
+        if (out.main) assert.ok(C.contrast(text.slice(1), bg) >= 7, `${mode} ${dark} text on ${bg}`);
+        assert.ok(C.contrast(hex(out.button), bg) >= 4.5, `${mode} ${dark} accent text ${hex(out.button)} on ${bg}`);
+        assert.ok(C.contrast(hex(out['button-active']), bg) >= 3, `${mode} ${dark} play button`);
+      }
+    }
+  }
+  assert.strictEqual(LIVE.gelLiveColors({ mode: 'accent', dark: true }, {}), null);
+});
+
+test('theme.js includes song colours and the record spin only when asked', () => {
+  const t = s => T.buildThemeJs({ name: 'j', colors: T.ORIGINAL, style: Object.assign(T.defaultStyle(), s) });
+  assert.strictEqual(t({}), '');
+  const live = t({ dynamic: 'full' });
+  assert.ok(live.includes('colorExtractor') && live.includes('"mode":"full"') && !live.includes('gelFxEngine'));
+  assert.doesNotThrow(() => new Function(live));
+  const vinyl = t({ layout: { art: 'vinyl' } });
+  assert.ok(vinyl.includes('gel-playing') && vinyl.includes('var live = null'));
+  const both = t({ dynamic: 'accent', layout: { art: 'vinyl' }, fx: { effect: 'stars' } });
+  assert.ok(both.includes('gelFxEngine') && both.includes('colorExtractor'));
+  assert.doesNotThrow(() => new Function(both));
 });

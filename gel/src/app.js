@@ -1,6 +1,71 @@
 (function () {
-  const { color: C, themegen: T, presets: { PRESETS, GROUPS }, picture, fx: FX } = window.Gel;
+  const { color: C, themegen: T, presets: { PRESETS, GROUPS }, picture, fx: FX, glyphs: G, live: LIVE } = window.Gel;
+
+  // Spicetify's own add-ons that Gel can switch on (kind: extension or custom app)
+  const ADDONS = [
+    { id: 'fullAppDisplay.js', kind: 'ext', name: 'Full-screen now playing', desc: 'Huge cover art on a blurred background. Open it from the new button in the top bar.' },
+    { id: 'lyrics-plus', kind: 'app', name: 'Lyrics page', desc: 'Adds a Lyrics page with lyrics that scroll along with the song.' },
+    { id: 'popupLyrics.js', kind: 'ext', name: 'Pop-up lyrics', desc: 'Lyrics in a small window that floats over your other apps. Open it from the top bar.' },
+    { id: 'trashbin.js', kind: 'ext', name: 'Trash bin', desc: 'Right-click a song or artist and bin it. Spotify skips it from then on.' },
+    { id: 'shuffle+.js', kind: 'ext', name: 'Better shuffle', desc: 'A truly random shuffle with no favourites.' },
+    { id: 'loopyLoop.js', kind: 'ext', name: 'Loop part of a song', desc: 'Right-click the progress bar to set where a loop starts and ends.' },
+    { id: 'keyboardShortcut.js', kind: 'ext', name: 'Keyboard shortcuts', desc: 'Extra shortcuts for getting around Spotify with your keyboard.' },
+    { id: 'bookmark.js', kind: 'ext', name: 'Bookmarks', desc: 'Save pages, songs and moments in songs to come back to later.' },
+    { id: 'new-releases', kind: 'app', name: 'New releases page', desc: 'A page of new music from the artists you follow.' },
+  ];
   const api = window.gelApi || mockApi();
+
+  // ---------- Gel, the jelly mascot ----------
+  let mascotCount = 0;
+  function mascotSvg() {
+    const id = `gm${++mascotCount}`;
+    return `<svg class="mascot" viewBox="0 0 64 64" aria-hidden="true">
+      <defs>
+        <linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#FF7AB8"/><stop offset=".55" stop-color="#9B6BFF"/><stop offset="1" stop-color="#3EE0FF"/>
+        </linearGradient>
+      </defs>
+      <g class="m-body">
+        <ellipse cx="32" cy="60" rx="17" ry="2.6" fill="#000" opacity=".25"/>
+        <path d="M32 4c3 5 9 8 14 12 7 6 11 13 11 21 0 12-11 20-25 20S7 49 7 37c0-8 4-15 11-21 5-4 11-7 14-12z" fill="url(#${id})"/>
+        <ellipse cx="21" cy="25" rx="5" ry="8.5" fill="#fff" opacity=".38" transform="rotate(28 21 25)"/>
+        <circle cx="27.5" cy="12.5" r="2" fill="#fff" opacity=".55"/>
+        <g class="m-eyes">
+          <ellipse cx="24.5" cy="37" rx="3.6" ry="4.6" fill="#1A1033"/>
+          <ellipse cx="39.5" cy="37" rx="3.6" ry="4.6" fill="#1A1033"/>
+          <circle cx="25.8" cy="35.2" r="1.35" fill="#fff"/>
+          <circle cx="40.8" cy="35.2" r="1.35" fill="#fff"/>
+        </g>
+        <ellipse cx="17.5" cy="43" rx="3.4" ry="2" fill="#FF8FC6" opacity=".75"/>
+        <ellipse cx="46.5" cy="43" rx="3.4" ry="2" fill="#FF8FC6" opacity=".75"/>
+        <path class="m-smile" d="M28.6 43.4q3.4 3.4 6.8 0" fill="none" stroke="#1A1033" stroke-width="2" stroke-linecap="round"/>
+        <path class="m-sad" d="M28.8 46q3.2-2.6 6.4 0" fill="none" stroke="#1A1033" stroke-width="2" stroke-linecap="round"/>
+      </g>
+    </svg>`;
+  }
+  document.querySelectorAll('[data-mascot]').forEach(el => { el.outerHTML = mascotSvg(); });
+
+  function react(mood) {
+    document.querySelectorAll('.mascot').forEach(m => {
+      m.classList.remove('happy', 'sad');
+      void m.getBoundingClientRect();
+      m.classList.add(mood);
+      clearTimeout(m.__t);
+      m.__t = setTimeout(() => m.classList.remove(mood), 2200);
+    });
+  }
+
+  // Sliders fill with the neon gradient up to their value
+  function fillRanges() {
+    document.querySelectorAll('input[type="range"]').forEach(r => {
+      const pct = ((Number(r.value) - Number(r.min)) / (Number(r.max) - Number(r.min))) * 100;
+      r.style.setProperty('--val', `${pct}%`);
+    });
+  }
+  document.addEventListener('input', e => { if (e.target.type === 'range') fillRanges(); });
+
+  // Custom window buttons
+  document.querySelectorAll('[data-win]').forEach(b => b.addEventListener('click', () => { if (api.win) api.win(b.dataset.win); }));
 
   const LS_CURRENT = 'gel.v1.current';
   const LS_SAVED = 'gel.v1.saved';
@@ -28,6 +93,7 @@
     selected: null,
     mode: 'dark',
     filter: loadJSON('gel.v1.filter', 'all'),
+    addons: loadJSON('gel.v1.addons', null),
     status: null,
     applying: false,
   };
@@ -58,7 +124,7 @@
   let toastTimer = null;
   function toast(msg, bad) {
     const el = $('#toast');
-    el.textContent = msg;
+    $('#toastText').textContent = msg;
     el.classList.toggle('bad', !!bad);
     el.hidden = false;
     el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
@@ -67,8 +133,19 @@
   }
 
   // ---------- Tabs ----------
+  function placeInk() {
+    const active = document.querySelector('.tab[aria-selected="true"]');
+    const ink = document.querySelector('.tab-ink');
+    if (!active || !ink) return;
+    ink.style.left = `${active.offsetLeft}px`;
+    ink.style.width = `${active.offsetWidth}px`;
+  }
+  window.addEventListener('resize', placeInk);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(placeInk);
+
   function showTab(name) {
     document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === name)));
+    placeInk();
     document.querySelectorAll('.pane').forEach(p => { p.hidden = p.dataset.pane !== name; });
     $('.panel').scrollTop = 0;
     if (name === 'setup') refreshStatus();
@@ -96,6 +173,11 @@
       el.style.setProperty(`--spice-${key}`, `#${colors[key]}`);
       el.style.setProperty(`--spice-rgb-${key}`, C.rgbString(colors[key]));
     }
+    // The app's background glow takes on the theme's colours
+    const rootStyle = document.documentElement.style;
+    const fxBase = style.fx && style.fx.effect !== 'none' ? (style.fx.color || FX.autoColor(style.fx.effect, colors)) : null;
+    rootStyle.setProperty('--amb-a', `#${colors['button-active']}`);
+    rootStyle.setProperty('--amb-b', `#${fxBase && fxBase !== 'FFFFFF' ? fxBase : C.mix(colors['button-active'], 'FF5FA2', 0.55)}`);
     ensureFont(style.font);
     const family = T.fontFamilyFor(style);
     el.style.setProperty('--p-font', family ? `"${family}", 'Segoe UI', system-ui, sans-serif` : `'Segoe UI', system-ui, sans-serif`);
@@ -118,6 +200,30 @@
     el.style.setProperty('--p-alpha', seeThrough ? String(style.panelOpacity) : '1');
     el.style.setProperty('--p-blur', seeThrough ? `${style.bgBlur}px` : '0px');
     el.classList.toggle('fx-behind', behind);
+
+    // Layout
+    const L = style.layout;
+    el.classList.remove('logo-keep', 'logo-glyph', 'logo-image', 'logo-hide', 'art-square', 'art-rounded', 'art-circle', 'art-vinyl', 'player-normal', 'player-floating');
+    el.classList.add(`logo-${L.logo}`, `art-${L.art}`, `player-${L.player}`);
+    el.classList.toggle('declutter', L.declutter);
+    el.classList.toggle('scrollbars', L.scrollbars);
+    el.classList.toggle('bouncy', L.bouncy);
+    if (L.logo === 'glyph') el.style.setProperty('--p-logo', `url("${G.glyphDataUrl(L.glyph, '000000')}")`);
+    else if (L.logo === 'image' && L.logoImage) el.style.setProperty('--p-logo', `url("${L.logoImage}")`);
+    else el.style.removeProperty('--p-logo');
+
+    // Colours that follow the song: the preview uses the cover that's "playing" in it
+    el.classList.toggle('live', style.dynamic !== 'off');
+    if (style.dynamic !== 'off') {
+      const alpha = seeThrough ? style.panelOpacity : 1;
+      const out = LIVE.gelLiveColors({ mode: style.dynamic, dark: C.isDark(colors.main), text: '#' + colors.text, main: '#' + colors.main, alpha }, LIVE.SAMPLE_PALETTE);
+      if (out) {
+        for (const [n, c] of Object.entries(out)) {
+          el.style.setProperty(`--spice-${n}`, `rgb(${c.join(',')})`);
+          el.style.setProperty(`--spice-rgb-${n}`, c.join(','));
+        }
+      }
+    }
     renderPreviewFx();
     renderContrast();
   }
@@ -153,17 +259,21 @@
   // ---------- Gallery ----------
   function chipHtml(t) {
     const c = T.sanitizeColors(t.colors);
-    const style = [
+    const st = t.style || {};
+    const layout = st.layout ? T.sanitizeLayout(st.layout) : T.defaultLayout();
+    const glyph = layout.logo === 'glyph' ? layout.glyph : 'gel';
+    const vars = [
       `--c-main:#${c.main}`, `--c-frame:#${c.sidebar}`, `--c-text:#${c.text}`,
       `--c-subtext:#${c.subtext}`, `--c-accent:#${c['button-active']}`, `--c-player:#${c.player}`,
+      `--c-logo:url('${G.glyphDataUrl(glyph, '000000')}')`,
     ].join(';');
-    const fx = t.style && t.style.fx ? FX.sanitizeFx(t.style.fx) : null;
+    const fx = st.fx ? FX.sanitizeFx(st.fx) : null;
     let deco = '';
     if (fx && fx.effect !== 'none') {
       const fc = '#' + (fx.color || FX.autoColor(fx.effect, c));
       deco = `<span class="chip-fx fx-${fx.effect}" style="--c-fx:${fc}"><i></i><i></i><i></i><i></i></span>`;
     }
-    return `<span class="chip-field" style="${style}"><span class="chip-frame"></span><span class="chip-lines"><i></i><i></i><i></i></span>${deco}<span class="chip-dot"></span><span class="chip-player"></span></span>`;
+    return `<span class="chip-field" style="${vars}"><span class="chip-logo"></span><span class="chip-side"></span><span class="chip-frame"></span><span class="chip-lines"><i></i><i></i><i></i></span><span class="chip-dot"></span><span class="chip-player"></span>${deco}</span>`;
   }
 
   function escapeHtml(s) {
@@ -181,8 +291,9 @@
   function chipButton(t, attr, small) {
     const font = chipFont(t);
     if (font && T.isWebFont(font)) ensureFont(font);
-    const fontStyle = font ? ` style="--chip-font:'${escapeHtml(font)}', var(--display)"` : '';
-    return `<button class="chip" ${attr} aria-pressed="${state.selected === t.id}" title="${escapeHtml(t.blurb || t.name)}">
+    const fontStyle = font ? ` style="--chip-font:'${escapeHtml(font)}', var(--sans)"` : '';
+    const accent = T.sanitizeColors(t.colors)['button-active'];
+    return `<button class="chip" ${attr} aria-pressed="${state.selected === t.id}" title="${escapeHtml(t.blurb || t.name)}" style="--c-accent:#${accent}">
         ${chipHtml(t)}
         <span class="chip-label"><span class="chip-name"${fontStyle}>${escapeHtml(t.name)}</span><small>${escapeHtml(small)}</small></span>
       </button>`;
@@ -404,6 +515,7 @@
     $('#fxColorNote').textContent = fx.color ? 'Your pick' : 'Follows your accent';
     $('#fxColorReset').hidden = !fx.color;
     document.querySelectorAll('[data-layer]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.layer === fx.layer)));
+    fillRanges();
     $('#fxHelp').textContent = fx.layer === 'behind' && fx.effect !== 'none'
       ? "Behind the panels, the animation shows in the gaps and through see-through panels. If you can't see it in Spotify, switch to In front."
       : 'Falling petals, snow or fireflies drift across Spotify. They stop if animation effects are turned off in Windows.';
@@ -445,6 +557,91 @@
   $('#fxColor').addEventListener('input', e => fxChanged({ color: e.target.value }));
   $('#fxColorReset').addEventListener('click', () => fxChanged({ color: null }));
   document.querySelectorAll('[data-layer]').forEach(b => b.addEventListener('click', () => fxChanged({ layer: b.dataset.layer })));
+
+  // ---------- Layout ----------
+  $('#glyphGrid').innerHTML = Object.entries(G.GLYPHS).map(([id, g]) =>
+    `<button class="glyph" role="radio" data-glyph="${id}" aria-checked="false" title="${escapeHtml(g.name)}" aria-label="${escapeHtml(g.name)}"><span style="--g:url('${G.glyphDataUrl(id, '000000')}')"></span></button>`).join('');
+
+  function layoutChanged(patch) {
+    state.theme.style.layout = T.sanitizeLayout(Object.assign({}, state.theme.style.layout, patch));
+    syncLayoutInputs(); renderPreview(); persist();
+  }
+
+  function syncLayoutInputs() {
+    const L = state.theme.style.layout;
+    const setRadio = (attr, val) => document.querySelectorAll(`[data-${attr}]`).forEach(b => b.setAttribute('aria-checked', String(b.dataset[attr] === val)));
+    setRadio('logo', L.logo === 'image' && !L.logoImage ? 'glyph' : L.logo);
+    setRadio('glyph', L.glyph);
+    setRadio('player', L.player);
+    setRadio('art', L.art);
+    setRadio('dynamic', state.theme.style.dynamic);
+    $('#glyphGrid').hidden = L.logo !== 'glyph';
+    $('#logoPicWrap').hidden = L.logo !== 'image';
+    $('#logoThumb').style.backgroundImage = L.logoImage ? `url("${L.logoImage}")` : '';
+    $('#declutter').checked = L.declutter;
+    $('#scrollbars').checked = L.scrollbars;
+    $('#bouncy').checked = L.bouncy;
+    $('#artHelp').textContent = L.art === 'vinyl'
+      ? 'The cover of the song playing turns round and round like a record, and stops when you pause.'
+      : L.art === 'circle' ? 'Album, playlist and artist pictures become circles.' : '';
+    $('#dynamicHelp').textContent = state.theme.style.dynamic === 'off'
+      ? 'Spotify recolours itself from each album cover as songs change. Text always stays readable.'
+      : 'In Spotify, colours change with every song. The preview shows the cover of the song playing in it.';
+  }
+
+  document.querySelectorAll('[data-logo]').forEach(b => b.addEventListener('click', () => {
+    if (b.dataset.logo === 'image' && !state.theme.style.layout.logoImage) { $('#logoInput').click(); return; }
+    layoutChanged({ logo: b.dataset.logo });
+  }));
+  $('#glyphGrid').addEventListener('click', e => {
+    const b = e.target.closest('[data-glyph]');
+    if (b) layoutChanged({ logo: 'glyph', glyph: b.dataset.glyph });
+  });
+  $('#logoChoose').addEventListener('click', () => $('#logoInput').click());
+  $('#logoInput').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try { layoutChanged({ logo: 'image', logoImage: await picture.logo(file) }); }
+    catch (err) { toast(err.message, true); }
+  });
+  document.querySelectorAll('[data-player]').forEach(b => b.addEventListener('click', () => layoutChanged({ player: b.dataset.player })));
+  document.querySelectorAll('[data-art]').forEach(b => b.addEventListener('click', () => layoutChanged({ art: b.dataset.art })));
+  $('#declutter').addEventListener('change', e => layoutChanged({ declutter: e.target.checked }));
+  $('#scrollbars').addEventListener('change', e => layoutChanged({ scrollbars: e.target.checked }));
+  $('#bouncy').addEventListener('change', e => layoutChanged({ bouncy: e.target.checked }));
+
+  // ---------- Extras ----------
+  document.querySelectorAll('[data-dynamic]').forEach(b => b.addEventListener('click', () => {
+    state.theme.style.dynamic = b.dataset.dynamic;
+    syncLayoutInputs(); renderPreview(); persist();
+  }));
+
+  function renderAddons() {
+    const on = state.addons || {};
+    $('#addonList').innerHTML = ADDONS.map(a => `
+      <label class="addon">
+        <span class="switch"><input type="checkbox" data-addon="${escapeHtml(a.id)}" ${on[a.id] ? 'checked' : ''}><span class="switch-track" aria-hidden="true"></span></span>
+        <span><b>${escapeHtml(a.name)}</b><small>${escapeHtml(a.desc)}</small></span>
+      </label>`).join('');
+  }
+  $('#addonList').addEventListener('change', e => {
+    const id = e.target.dataset.addon;
+    if (!id) return;
+    state.addons = Object.assign({}, state.addons, { [id]: e.target.checked });
+    try { localStorage.setItem('gel.v1.addons', JSON.stringify(state.addons)); } catch (_) { /* not important */ }
+    toast(`${e.target.checked ? 'Switched on' : 'Switched off'} ${ADDONS.find(a => a.id === id).name}. Press Apply to Spotify to use it.`);
+  });
+
+  function addonPayload() {
+    if (!state.addons) return null;
+    const out = { extensions: {}, apps: {} };
+    for (const a of ADDONS) {
+      if (!(a.id in state.addons)) continue;
+      (a.kind === 'ext' ? out.extensions : out.apps)[a.id] = !!state.addons[a.id];
+    }
+    return out;
+  }
 
   // ---------- Name ----------
   $('#themeName').addEventListener('input', e => { state.theme.name = e.target.value; persist(); });
@@ -499,11 +696,13 @@
     openLog();
     try {
       const t = state.theme;
-      const res = await api.apply({ name: t.name, colorIni: T.buildColorIni(t), userCss: T.buildUserCss(t), themeJs: T.buildThemeJs(t) });
+      const res = await api.apply({ name: t.name, colorIni: T.buildColorIni(t), userCss: T.buildUserCss(t), themeJs: T.buildThemeJs(t), addons: addonPayload() });
       toast(res.message, !res.ok);
+      react(res.ok ? 'happy' : 'sad');
       if (res.needsSpicetify) showTab('setup');
     } catch (err) {
       toast(`Something went wrong: ${err.message}`, true);
+      react('sad');
     } finally {
       state.applying = false;
       setWorking(btn, false, 'Apply to Spotify');
@@ -540,6 +739,11 @@
   // ---------- Setup ----------
   async function refreshStatus() {
     try { state.status = await api.status(); } catch (_) { state.status = null; }
+    if (!state.addons && state.status && state.status.spicetify) {
+      const have = new Set([...(state.status.extensions || []), ...(state.status.customApps || [])]);
+      state.addons = Object.fromEntries(ADDONS.map(a => [a.id, have.has(a.id)]));
+      renderAddons();
+    }
     renderStatus();
   }
 
@@ -681,11 +885,14 @@
     renderGallery();
     syncColourInputs();
     syncStyleInputs();
+    syncLayoutInputs();
     renderPreview();
   }
 
   renderColourList();
+  renderAddons();
   renderAll();
+  placeInk();
   refreshStatus();
 
   // ---------- Browser stand-in (only used outside the desktop app) ----------
@@ -694,7 +901,7 @@
     const emit = (line, kind) => listeners.forEach(cb => cb({ line, kind }));
     const wait = ms => new Promise(r => setTimeout(r, ms));
     return {
-      status: async () => ({ platform: 'win32', spicetify: { path: 'C:\\spicetify.exe', version: '2.43.2' }, currentTheme: '', gelActive: false, spotify: { desktop: false, store: true, usingStore: true } }),
+      status: async () => ({ platform: 'win32', spicetify: { path: 'C:\\spicetify.exe', version: '2.43.2' }, currentTheme: '', gelActive: false, extensions: [], customApps: ['marketplace'], spotify: { desktop: false, store: true, usingStore: true } }),
       apply: async () => { emit('> spicetify apply', 'cmd'); await wait(400); emit('Applied (preview only)', 'ok'); return { ok: true, message: 'Preview mode: open Gel as a desktop app to change Spotify.' }; },
       restore: async () => ({ ok: true, message: 'Preview mode: nothing changed.' }),
       launch: async () => ({ ok: true, message: 'Preview mode: nothing opened.' }),

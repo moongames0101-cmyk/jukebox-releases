@@ -74,6 +74,62 @@
     { id: 'rose-gold', group: 'light', name: 'Rose Gold', blurb: 'Blush and warm metal', seed: { mode: 'light', bg: 'FBF1EE', text: '3A2422', accent: 'C77966' }, style: { font: 'Poppins', radius: 12, fx: fx('sparkles', 0.3, { color: 'D9A08C' }) } },
   ];
 
+  // Each theme's logo emblem and layout. Anything not listed keeps Spotify's normal layout.
+  const LOOKS = {
+    'neo-tokyo': { glyph: 'bolt', scrollbars: true },
+    'magical-girl': { glyph: 'sparkle', art: 'rounded', player: 'floating', bouncy: true },
+    'sakura': { glyph: 'sakura', art: 'rounded', player: 'floating' },
+    'sakura-night': { glyph: 'sakura', art: 'rounded' },
+    'moonlit-shrine': { glyph: 'gate' },
+    'shonen-spirit': { glyph: 'flame' },
+    'ramune': { glyph: 'bubble', art: 'rounded', player: 'floating', bouncy: true },
+    'kawaii-pop': { glyph: 'cat', art: 'circle', player: 'floating', bouncy: true },
+    'idol-stage': { glyph: 'star', art: 'circle', player: 'floating', scrollbars: true },
+    'spirit-forest': { glyph: 'leaf' },
+    'mecha-pilot': { glyph: 'gear' },
+    'ninja-night': { glyph: 'shuriken' },
+    'lofi-study': { glyph: 'cassette', art: 'vinyl', player: 'floating' },
+    'pixel-quest': { glyph: 'pixel' },
+    'moon-viewing': { glyph: 'moon', art: 'circle' },
+    'brush-ink': { glyph: 'enso' },
+    'editorial': { glyph: 'note' },
+    'terminal': { glyph: 'prompt', scrollbars: true },
+    'arcade': { glyph: 'pixel', scrollbars: true, bouncy: true },
+    'neon-sign': { glyph: 'heart' },
+    'bubblegum': { glyph: 'bubble', art: 'circle', player: 'floating', bouncy: true },
+    'brutalist': { glyph: 'note' },
+    'gallery': { glyph: 'vinyl' },
+    'midnight-jazz': { glyph: 'note', art: 'vinyl' },
+    'retro-tv': { glyph: 'cassette', art: 'rounded' },
+    'cosy-cabin': { glyph: 'snowflake', art: 'rounded' },
+    'future': { glyph: 'planet', art: 'rounded', player: 'floating' },
+    'autumn-walk': { glyph: 'leaf' },
+    'aurora': { glyph: 'snowflake' },
+    'ocean-floor': { glyph: 'wave' },
+    'thunderstorm': { glyph: 'bolt' },
+    'campfire': { glyph: 'flame' },
+    'galaxy': { glyph: 'planet', art: 'circle' },
+    'vaporwave': { glyph: 'sun', scrollbars: true },
+    'coffee-house': { glyph: 'cup', art: 'vinyl' },
+    'moss': { glyph: 'leaf' },
+    'deep-sea': { glyph: 'wave' },
+    'ember': { glyph: 'flame' },
+    'night-drive': { glyph: 'moon' },
+    'synthwave': { glyph: 'sun', scrollbars: true },
+    'lavender': { glyph: 'sparkle', player: 'floating' },
+    'gold-room': { glyph: 'crown' },
+    'ink': { glyph: 'note' },
+    'mint': { glyph: 'leaf' },
+    'arctic': { glyph: 'snowflake' },
+    'paper': { glyph: 'note' },
+    'matcha': { glyph: 'cup' },
+    'rose-gold': { glyph: 'heart', player: 'floating' },
+  };
+  for (const p of seeds) {
+    const look = LOOKS[p.id];
+    p.style = Object.assign({}, p.style, { layout: look ? Object.assign({ logo: 'glyph' }, look) : { logo: 'keep' } });
+  }
+
   const PRESETS = seeds.map(p => ({
     id: p.id,
     group: p.group,

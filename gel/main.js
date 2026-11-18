@@ -6,6 +6,10 @@ const os = require('os');
 const { autoUpdater } = require('electron-updater');
 
 const THEME_FOLDER = 'Gel';
+// Spicetify's own add-ons that Gel can switch on and off
+const KNOWN_EXTENSIONS = ['fullAppDisplay.js', 'popupLyrics.js', 'trashbin.js', 'shuffle+.js', 'loopyLoop.js', 'keyboardShortcut.js', 'bookmark.js'];
+const KNOWN_APPS = ['lyrics-plus', 'new-releases'];
+const splitList = v => String(v || '').split('|').map(x => x.trim()).filter(Boolean);
 const SCHEME = 'Gel';
 const IS_WIN = process.platform === 'win32';
 const IS_MAC = process.platform === 'darwin';
@@ -181,6 +185,8 @@ ipcMain.handle('gel:status', async () => {
     currentTheme: cfg['Setting.current_theme'] || '',
     colorScheme: cfg['Setting.color_scheme'] || '',
     gelActive: (cfg['Setting.current_theme'] || '') === THEME_FOLDER,
+    extensions: splitList(cfg['AdditionalOptions.extensions']),
+    customApps: splitList(cfg['AdditionalOptions.custom_apps']),
     spotify: detectSpotify(cfg),
     busy,
   };
@@ -207,7 +213,25 @@ ipcMain.handle('gel:apply', async (_e, payload) => {
       return { ok: false, message: `Gel couldn't write the theme files: ${err.message}` };
     }
 
-    let r = await run(exe, ['config', 'current_theme', THEME_FOLDER, 'color_scheme', SCHEME, 'inject_css', '1', 'replace_colors', '1', 'inject_theme_js', '1']);
+    const configArgs = ['config', 'current_theme', THEME_FOLDER, 'color_scheme', SCHEME, 'inject_css', '1', 'replace_colors', '1', 'inject_theme_js', '1'];
+    // Add-ons: only touch the ones Gel knows about, and only when they need changing
+    const addons = payload && payload.addons;
+    if (addons && typeof addons === 'object') {
+      const cfg = readIni(path.join(spicetifyUserdata(), 'config-xpui.ini'));
+      const curExt = splitList(cfg['AdditionalOptions.extensions']);
+      const curApps = splitList(cfg['AdditionalOptions.custom_apps']);
+      for (const [name, on] of Object.entries(addons.extensions || {})) {
+        if (!KNOWN_EXTENSIONS.includes(name)) continue;
+        if (on && !curExt.includes(name)) configArgs.push('extensions', name);
+        else if (!on && curExt.includes(name)) configArgs.push('extensions', `${name}-`);
+      }
+      for (const [name, on] of Object.entries(addons.apps || {})) {
+        if (!KNOWN_APPS.includes(name)) continue;
+        if (on && !curApps.includes(name)) configArgs.push('custom_apps', name);
+        else if (!on && curApps.includes(name)) configArgs.push('custom_apps', `${name}-`);
+      }
+    }
+    let r = await run(exe, configArgs);
     if (r.code !== 0) return { ok: false, message: 'Spicetify could not save its settings. Details are in the log.' };
 
     r = await run(exe, ['apply']);
@@ -379,14 +403,23 @@ ipcMain.handle('gel:update-install', () => {
 
 // ---------- Window ----------
 
+ipcMain.on('gel:win', (e, action) => {
+  const w = BrowserWindow.fromWebContents(e.sender);
+  if (!w) return;
+  if (action === 'minimize') w.minimize();
+  else if (action === 'maximize') { if (w.isMaximized()) w.unmaximize(); else w.maximize(); }
+  else if (action === 'close') w.close();
+});
+
 function createWindow() {
   win = new BrowserWindow({
     width: 1340,
     height: 860,
     minWidth: 1080,
     minHeight: 680,
-    backgroundColor: '#1B1C20',
+    backgroundColor: '#0C0A1A',
     title: 'Gel',
+    frame: false,
     icon: path.join(__dirname, 'build', 'icon.png'),
     autoHideMenuBar: true,
     webPreferences: {

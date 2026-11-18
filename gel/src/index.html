@@ -23,30 +23,48 @@
     <symbol id="i-library" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M5 4v16M10 4v16M14.5 4.5l5 15"/></symbol>
     <symbol id="i-volume" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0-6 6v4l-2 3v1h16v-1l-2-3V9a6 6 0 0 0-6-6zm-2.5 16a2.5 2.5 0 0 0 5 0z"/></symbol>
+    <symbol id="i-people" viewBox="0 0 24 24"><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 9c0-3.3 3.1-6 7-6s7 2.7 7 6v1H2zM17 11a3 3 0 1 0 0-6v6zm1.5 2.2c2.1.8 3.5 2.6 3.5 4.8v1h-4c0-2.3-.8-4.3-2.3-5.8z"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 0c.6 6.6 5.4 11.4 12 12-6.6.6-11.4 5.4-12 12-.6-6.6-5.4-11.4-12-12C6.6 11.4 11.4 6.6 12 0z"/></symbol>
+    <symbol id="i-min" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" d="M6 12h12"/></symbol>
+    <symbol id="i-max" viewBox="0 0 24 24"><rect x="5.5" y="5.5" width="13" height="13" rx="3.5" fill="none" stroke="currentColor" stroke-width="2.2"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M6 6l12 12M18 6 6 18"/></symbol>
   </svg>
 
+  <div class="ambient" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
   <div class="app">
-    <header class="topbar">
+    <header class="titlebar">
       <div class="brand">
-        <img class="brand-mark" src="icon.png" alt="" width="26" height="26">
+        <span data-mascot="brand"></span>
         <span class="brand-name">Gel</span>
+        <svg class="brand-spark" aria-hidden="true"><use href="#i-spark"/></svg>
       </div>
-      <nav class="tabs" role="tablist" aria-label="Sections">
+      <nav class="tabs glass" role="tablist" aria-label="Sections">
+        <span class="tab-ink" aria-hidden="true"></span>
         <button class="tab" role="tab" data-tab="themes" aria-selected="true">Themes</button>
         <button class="tab" role="tab" data-tab="colours" aria-selected="false">Colours</button>
         <button class="tab" role="tab" data-tab="style" aria-selected="false">Style</button>
+        <button class="tab" role="tab" data-tab="layout" aria-selected="false">Layout</button>
+        <button class="tab" role="tab" data-tab="extras" aria-selected="false">Extras</button>
         <button class="tab" role="tab" data-tab="setup" aria-selected="false">Setup</button>
       </nav>
-      <button class="update-chip" id="updateChip" hidden></button>
-      <button class="status-pill" id="statusPill" data-state="checking" title="Open Setup">
-        <span class="status-dot" aria-hidden="true"></span>
-        <span id="statusText">Checking your setup</span>
-      </button>
+      <div class="titlebar-right">
+        <button class="update-chip" id="updateChip" hidden></button>
+        <button class="status-pill" id="statusPill" data-state="checking" title="Open Setup">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="statusText">Checking your setup</span>
+        </button>
+        <div class="winbtns" id="winbtns">
+          <button class="winbtn" data-win="minimize" aria-label="Minimise"><svg><use href="#i-min"/></svg></button>
+          <button class="winbtn" data-win="maximize" aria-label="Maximise"><svg><use href="#i-max"/></svg></button>
+          <button class="winbtn close" data-win="close" aria-label="Close"><svg><use href="#i-x"/></svg></button>
+        </div>
+      </div>
     </header>
 
     <div class="workspace">
-      <section class="panel" aria-live="polite">
+      <section class="panel glass reveal d1" aria-live="polite">
         <!-- THEMES -->
         <div class="pane" data-pane="themes">
           <h2 class="pane-title">Pick a starting point</h2>
@@ -56,7 +74,7 @@
 
           <h3 class="section-title">My themes</h3>
           <div class="swatchbook" id="savedGrid"></div>
-          <p class="empty" id="savedEmpty">Themes you save show up here. Tweak any theme, then press <strong>Save to My themes</strong>.</p>
+          <div class="empty" id="savedEmpty"><span data-mascot="empty"></span><span>Themes you save show up here. Tweak any theme, then press <strong>Save to My themes</strong>.</span></div>
         </div>
 
         <!-- COLOURS -->
@@ -164,6 +182,74 @@
           </div>
         </div>
 
+        <!-- LAYOUT -->
+        <div class="pane" data-pane="layout" hidden>
+          <h2 class="pane-title">Layout</h2>
+          <p class="pane-lede">Reshape Spotify so it feels like your own app. Each theme comes with its own logo and layout, and you can change them here.</p>
+
+          <div class="field">
+            <span class="label">Logo</span>
+            <div class="segmented" role="radiogroup" aria-label="Logo">
+              <button role="radio" data-logo="glyph" aria-checked="false">Emblem</button>
+              <button role="radio" data-logo="image" aria-checked="false">Picture</button>
+              <button role="radio" data-logo="keep" aria-checked="false">Spotify's</button>
+              <button role="radio" data-logo="hide" aria-checked="false">Hidden</button>
+            </div>
+            <div class="glyph-grid" id="glyphGrid" role="radiogroup" aria-label="Emblem"></div>
+            <div class="logo-pic" id="logoPicWrap" hidden>
+              <span class="logo-thumb" id="logoThumb"></span>
+              <button class="btn ghost" id="logoChoose">Choose picture…</button>
+              <input type="file" id="logoInput" accept="image/png,image/jpeg,image/webp" hidden>
+            </div>
+            <p class="help">Replaces the Spotify logo at the top left of the app. Emblems use the theme's accent colour. The taskbar icon stays Spotify's.</p>
+          </div>
+
+          <div class="field">
+            <span class="label">Player bar</span>
+            <div class="segmented" role="radiogroup" aria-label="Player bar">
+              <button role="radio" data-player="normal" aria-checked="true">Docked</button>
+              <button role="radio" data-player="floating" aria-checked="false">Floating</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="label">Album covers</span>
+            <div class="segmented" role="radiogroup" aria-label="Album covers">
+              <button role="radio" data-art="square" aria-checked="true">Square</button>
+              <button role="radio" data-art="rounded" aria-checked="false">Rounded</button>
+              <button role="radio" data-art="circle" aria-checked="false">Circle</button>
+              <button role="radio" data-art="vinyl" aria-checked="false">Record</button>
+            </div>
+            <p class="help" id="artHelp"></p>
+          </div>
+
+          <div class="field toggles">
+            <label class="switch"><input type="checkbox" id="declutter"><span class="switch-track" aria-hidden="true"></span> Hide clutter <small>What's New, Friend Activity and upgrade buttons</small></label>
+            <label class="switch"><input type="checkbox" id="scrollbars"><span class="switch-track" aria-hidden="true"></span> Accent-coloured scrollbars</label>
+            <label class="switch"><input type="checkbox" id="bouncy"><span class="switch-track" aria-hidden="true"></span> Cards lift when you hover</label>
+          </div>
+          <p class="help">Layout changes rely on Spotify's design, so a Spotify update can undo some of them until you apply again.</p>
+        </div>
+
+        <!-- EXTRAS -->
+        <div class="pane" data-pane="extras" hidden>
+          <h2 class="pane-title">Extras</h2>
+
+          <div class="field">
+            <span class="label">Colours follow the song</span>
+            <div class="segmented" role="radiogroup" aria-label="Colours follow the song">
+              <button role="radio" data-dynamic="off" aria-checked="true">Off</button>
+              <button role="radio" data-dynamic="accent" aria-checked="false">Accent only</button>
+              <button role="radio" data-dynamic="full" aria-checked="false">Whole theme</button>
+            </div>
+            <p class="help" id="dynamicHelp">Spotify recolours itself from each album cover as songs change. Text always stays readable.</p>
+          </div>
+
+          <h3 class="section-title">Spotify add-ons</h3>
+          <p class="pane-lede">Free add-ons that come with Spicetify. They stay on whichever theme you use, and switch on when you press Apply.</p>
+          <div class="addons" id="addonList"></div>
+        </div>
+
         <!-- SETUP -->
         <div class="pane" data-pane="setup" hidden>
           <h2 class="pane-title">Setup</h2>
@@ -186,7 +272,7 @@
         </div>
       </section>
 
-      <section class="stage">
+      <section class="stage reveal d2">
         <div class="stage-head">
           <input class="theme-name" id="themeName" aria-label="Theme name" maxlength="40" spellcheck="false">
           <span class="contrast-badge" id="contrastBadge"></span>
@@ -195,10 +281,13 @@
         <div class="preview" id="preview">
           <div class="p-frame">
             <div class="p-topbar">
+              <span class="p-logo" id="previewLogo" aria-hidden="true"></span>
               <span class="p-round"><svg><use href="#i-chev-l"/></svg></span>
               <span class="p-round"><svg><use href="#i-chev-r"/></svg></span>
               <span class="p-home"><svg><use href="#i-home"/></svg></span>
               <span class="p-search"><svg><use href="#i-search"/></svg> What do you want to play?</span>
+              <span class="p-clutter"><svg><use href="#i-bell"/></svg></span>
+              <span class="p-clutter"><svg><use href="#i-people"/></svg></span>
               <span class="p-avatar">A</span>
             </div>
             <div class="p-body">
@@ -216,6 +305,7 @@
               </aside>
 
               <main class="p-main">
+                <span class="p-scrollthumb" aria-hidden="true"></span>
                 <div class="p-scroll">
                   <div class="p-hero">
                     <span class="p-hero-cover c1"></span>
@@ -274,12 +364,12 @@
       </section>
     </div>
 
-    <div class="log" id="log" hidden>
+    <div class="log glass" id="log" hidden>
       <div class="log-head"><span>Spicetify log</span><button class="link" id="logClose">Hide</button></div>
       <pre id="logBody"></pre>
     </div>
 
-    <footer class="actionbar">
+    <footer class="dock glass reveal d3">
       <div class="actions-left">
         <button class="btn ghost" id="saveTheme">Save to My themes</button>
         <button class="btn ghost" id="exportTheme">Export…</button>
@@ -288,15 +378,17 @@
       </div>
       <div class="actions-right">
         <button class="btn ghost" id="restoreSpotify">Back to normal Spotify</button>
-        <button class="btn primary" id="applyTheme"><span class="btn-label">Apply to Spotify</span></button>
+        <button class="btn primary" id="applyTheme"><svg aria-hidden="true"><use href="#i-spark"/></svg><span class="btn-label">Apply to Spotify</span></button>
       </div>
     </footer>
 
-    <div class="toast" id="toast" role="status" hidden></div>
+    <div class="toast" id="toast" role="status" hidden><span data-mascot="toast"></span><span id="toastText"></span></div>
   </div>
 
   <script src="lib/color.js"></script>
   <script src="lib/fx.js"></script>
+  <script src="lib/glyphs.js"></script>
+  <script src="lib/live.js"></script>
   <script src="lib/themegen.js"></script>
   <script src="lib/presets.js"></script>
   <script src="palette-from-image.js"></script>

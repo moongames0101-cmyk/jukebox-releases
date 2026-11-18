@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('gelApi', {
   status: () => ipcRenderer.invoke('gel:status'),
+  win: action => ipcRenderer.send('gel:win', action),
   apply: payload => ipcRenderer.invoke('gel:apply', payload),
   restore: () => ipcRenderer.invoke('gel:restore'),
   launch: () => ipcRenderer.invoke('gel:launch'),
