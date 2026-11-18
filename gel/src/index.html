@@ -51,7 +51,8 @@
         <div class="pane" data-pane="themes">
           <h2 class="pane-title">Pick a starting point</h2>
           <p class="pane-lede">Click a theme to try it in the preview. Nothing changes in Spotify until you press Apply.</p>
-          <div class="swatchbook" id="presetGrid"></div>
+          <div class="filters" id="groupFilters" role="radiogroup" aria-label="Show themes"></div>
+          <div id="presetGroups"></div>
 
           <h3 class="section-title">My themes</h3>
           <div class="swatchbook" id="savedGrid"></div>
@@ -93,6 +94,12 @@
             <select id="fontSelect"></select>
             <input type="text" id="customFont" placeholder="Font name, for example Segoe UI" hidden>
             <p class="help" id="fontHelp">Fonts download from Google Fonts the first time Spotify opens.</p>
+          </div>
+
+          <div class="field">
+            <label for="headingFontSelect">Heading font</label>
+            <select id="headingFontSelect"></select>
+            <p class="help">Big titles like playlist names. A bold or playful font here keeps the rest easy to read.</p>
           </div>
 
           <div class="field">
@@ -196,7 +203,7 @@
             </div>
             <div class="p-body">
               <aside class="p-lib">
-                <div class="p-lib-head"><svg><use href="#i-library"/></svg> Your Library <svg class="p-plus"><use href="#i-plus"/></svg></div>
+                <div class="p-lib-head p-heading"><svg><use href="#i-library"/></svg> Your Library <svg class="p-plus"><use href="#i-plus"/></svg></div>
                 <div class="p-chips"><span class="p-chip on">Playlists</span><span class="p-chip">Artists</span><span class="p-chip">Albums</span></div>
                 <ul class="p-lib-list">
                   <li class="on"><span class="p-cover c1"></span><span><b>Late Night Drive</b><small>Playlist, 42 songs</small></span></li>
@@ -214,7 +221,7 @@
                     <span class="p-hero-cover c1"></span>
                     <div>
                       <small>Playlist</small>
-                      <h1>Late Night Drive</h1>
+                      <h1 class="p-heading">Late Night Drive</h1>
                       <p>Neon on wet roads. 42 songs, 2 hr 31 min</p>
                     </div>
                   </div>
@@ -236,7 +243,7 @@
                     <li class="selected"><span>3</span><span><b>Static Hearts</b><small>Juno &amp; the Wires</small></span><span>Signal</span><span>3:12</span></li>
                     <li><span>4</span><span><b>Slow Orbit</b><small>Kaito Mori</small></span><span>Satellites</span><span>5:20</span></li>
                   </ol>
-                  <h3 class="p-shelf-title">Jump back in</h3>
+                  <h3 class="p-shelf-title p-heading">Jump back in</h3>
                   <div class="p-shelf">
                     <div class="p-card"><span class="p-cover c2"></span><b>Daily Mix 1</b><small>Mira Vale, Kaito Mori</small></div>
                     <div class="p-card hover"><span class="p-cover c5"></span><b>Focus Flow</b><small>Deep work, no words</small></div>

@@ -38,25 +38,69 @@
   };
 
   // Fonts loaded from Google Fonts inside Spotify. "default" keeps Spotify's own font.
+  // display: true marks fonts that look best on headings rather than every bit of text.
   const FONTS = [
-    { id: 'default', name: 'Spotify default' },
-    { id: 'Inter', name: 'Inter', weights: '400;500;700;800' },
-    { id: 'DM Sans', name: 'DM Sans', weights: '400;500;700' },
-    { id: 'Outfit', name: 'Outfit', weights: '400;500;700;800' },
-    { id: 'Space Grotesk', name: 'Space Grotesk', weights: '400;500;700' },
-    { id: 'Poppins', name: 'Poppins', weights: '400;500;700;800' },
-    { id: 'Nunito', name: 'Nunito', weights: '400;600;800' },
-    { id: 'Lexend', name: 'Lexend', weights: '400;500;700' },
-    { id: 'Montserrat', name: 'Montserrat', weights: '400;500;700;800' },
-    { id: 'Quicksand', name: 'Quicksand', weights: '400;500;700' },
-    { id: 'Rubik', name: 'Rubik', weights: '400;500;700;800' },
-    { id: 'Comfortaa', name: 'Comfortaa', weights: '400;500;700' },
-    { id: 'JetBrains Mono', name: 'JetBrains Mono', weights: '400;500;700;800' },
-    { id: 'custom', name: 'A font on my PC…' },
+    { id: 'default', name: 'Spotify default', group: 'Basics' },
+    { id: 'custom', name: 'A font on my PC…', group: 'Basics' },
+    { id: 'Inter', name: 'Inter', group: 'Clean' },
+    { id: 'DM Sans', name: 'DM Sans', group: 'Clean' },
+    { id: 'Outfit', name: 'Outfit', group: 'Clean' },
+    { id: 'Manrope', name: 'Manrope', group: 'Clean' },
+    { id: 'Plus Jakarta Sans', name: 'Plus Jakarta Sans', group: 'Clean' },
+    { id: 'Figtree', name: 'Figtree', group: 'Clean' },
+    { id: 'Sora', name: 'Sora', group: 'Clean' },
+    { id: 'Lexend', name: 'Lexend', group: 'Clean' },
+    { id: 'Montserrat', name: 'Montserrat', group: 'Clean' },
+    { id: 'Poppins', name: 'Poppins', group: 'Clean' },
+    { id: 'Space Grotesk', name: 'Space Grotesk', group: 'Clean' },
+    { id: 'Rubik', name: 'Rubik', group: 'Clean' },
+    { id: 'Nunito', name: 'Nunito', group: 'Rounded and friendly' },
+    { id: 'Quicksand', name: 'Quicksand', group: 'Rounded and friendly' },
+    { id: 'Comfortaa', name: 'Comfortaa', group: 'Rounded and friendly' },
+    { id: 'Fredoka', name: 'Fredoka', group: 'Rounded and friendly' },
+    { id: 'Baloo 2', name: 'Baloo 2', group: 'Rounded and friendly' },
+    { id: 'Varela Round', name: 'Varela Round', group: 'Rounded and friendly' },
+    { id: 'M PLUS Rounded 1c', name: 'M PLUS Rounded', group: 'Japanese style' },
+    { id: 'Zen Maru Gothic', name: 'Zen Maru Gothic', group: 'Japanese style' },
+    { id: 'Zen Kaku Gothic New', name: 'Zen Kaku Gothic', group: 'Japanese style' },
+    { id: 'Kosugi Maru', name: 'Kosugi Maru', group: 'Japanese style' },
+    { id: 'Noto Sans JP', name: 'Noto Sans JP', group: 'Japanese style' },
+    { id: 'DotGothic16', name: 'DotGothic16 (pixel)', group: 'Japanese style' },
+    { id: 'Mochiy Pop One', name: 'Mochiy Pop One', group: 'Japanese style', display: true },
+    { id: 'Hachi Maru Pop', name: 'Hachi Maru Pop', group: 'Japanese style', display: true },
+    { id: 'Dela Gothic One', name: 'Dela Gothic One', group: 'Japanese style', display: true },
+    { id: 'Yusei Magic', name: 'Yusei Magic (marker)', group: 'Japanese style', display: true },
+    { id: 'RocknRoll One', name: 'RocknRoll One', group: 'Japanese style', display: true },
+    { id: 'Reggae One', name: 'Reggae One', group: 'Japanese style', display: true },
+    { id: 'Potta One', name: 'Potta One (brush)', group: 'Japanese style', display: true },
+    { id: 'Shippori Mincho', name: 'Shippori Mincho (serif)', group: 'Japanese style', display: true },
+    { id: 'Kaisei Decol', name: 'Kaisei Decol', group: 'Japanese style', display: true },
+    { id: 'Exo 2', name: 'Exo 2', group: 'Techy' },
+    { id: 'Rajdhani', name: 'Rajdhani', group: 'Techy' },
+    { id: 'Chakra Petch', name: 'Chakra Petch', group: 'Techy' },
+    { id: 'Kanit', name: 'Kanit', group: 'Techy' },
+    { id: 'JetBrains Mono', name: 'JetBrains Mono', group: 'Techy' },
+    { id: 'Space Mono', name: 'Space Mono', group: 'Techy' },
+    { id: 'Orbitron', name: 'Orbitron', group: 'Techy', display: true },
+    { id: 'Audiowide', name: 'Audiowide', group: 'Techy', display: true },
+    { id: 'Lora', name: 'Lora', group: 'Classic serif' },
+    { id: 'Merriweather', name: 'Merriweather', group: 'Classic serif' },
+    { id: 'Playfair Display', name: 'Playfair Display', group: 'Classic serif', display: true },
+    { id: 'Press Start 2P', name: 'Press Start 2P (pixel)', group: 'Retro and display', display: true },
+    { id: 'VT323', name: 'VT323 (terminal)', group: 'Retro and display', display: true },
+    { id: 'Silkscreen', name: 'Silkscreen (pixel)', group: 'Retro and display', display: true },
+    { id: 'Bungee', name: 'Bungee', group: 'Retro and display', display: true },
+    { id: 'Monoton', name: 'Monoton (neon)', group: 'Retro and display', display: true },
+    { id: 'Righteous', name: 'Righteous', group: 'Retro and display', display: true },
+    { id: 'Bebas Neue', name: 'Bebas Neue', group: 'Retro and display', display: true },
+    { id: 'Pacifico', name: 'Pacifico (script)', group: 'Retro and display', display: true },
+    { id: 'Unbounded', name: 'Unbounded', group: 'Retro and display', display: true },
+    { id: 'Syne', name: 'Syne', group: 'Retro and display', display: true },
   ];
+  const isWebFont = id => FONTS.some(f => f.id === id) && id !== 'default' && id !== 'custom';
 
   function defaultStyle() {
-    return { font: 'default', customFont: '', radius: 8, glow: false, bgImage: null, bgDim: 0.55, bgBlur: 0, panelOpacity: 0.72, customCSS: '', fx: FX.defaultFx() };
+    return { font: 'default', customFont: '', headingFont: 'same', radius: 8, glow: false, bgImage: null, bgDim: 0.55, bgBlur: 0, panelOpacity: 0.72, customCSS: '', fx: FX.defaultFx() };
   }
 
   /**
@@ -136,6 +180,7 @@
     s.glow = !!s.glow;
     if (!FONTS.some(f => f.id === s.font)) s.font = 'default';
     s.customFont = String(s.customFont || '').replace(/[^\w \-]/g, '').slice(0, 60);
+    if (s.headingFont !== 'same' && !isWebFont(s.headingFont)) s.headingFont = 'same';
     if (s.bgImage && !/^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(s.bgImage)) s.bgImage = null;
     s.customCSS = String(s.customCSS || '');
     s.fx = FX.sanitizeFx(s.fx);
@@ -148,11 +193,17 @@
     return style.font;
   }
 
-  function googleFontsUrl(fontId) {
-    const f = FONTS.find(x => x.id === fontId);
-    if (!f || !f.weights) return null;
-    return `https://fonts.googleapis.com/css2?family=${encodeURIComponent(f.id).replace(/%20/g, '+')}:wght@${f.weights}&display=swap`;
+  function headingFamilyFor(style) {
+    return style.headingFont && style.headingFont !== 'same' && isWebFont(style.headingFont) ? style.headingFont : null;
   }
+
+  // Google's older font address skips weights a font doesn't have instead of failing
+  function googleFontsUrl(fontId) {
+    if (!isWebFont(fontId)) return null;
+    return `https://fonts.googleapis.com/css?family=${encodeURIComponent(fontId).replace(/%20/g, '+')}:400,500,700,800,900&display=swap`;
+  }
+
+  const FALLBACK = 'CircularSp, CircularSp-Arab, CircularSp-Hebr, CircularSp-Cyrl, CircularSp-Grek, CircularSp-Deva, sans-serif';
 
   function buildColorIni(theme) {
     const colors = sanitizeColors(theme.colors);
@@ -172,16 +223,25 @@
     const s = sanitizeStyle(theme.style);
     const colors = sanitizeColors(theme.colors);
     const out = [];
-    const fontUrl = s.font !== 'custom' ? googleFontsUrl(s.font) : null;
-    if (fontUrl) out.push(`@import url("${fontUrl}");`, '');
+    const family = fontFamilyFor(s);
+    const heading = headingFamilyFor(s);
+    const imports = [...new Set([s.font, s.headingFont].map(googleFontsUrl).filter(Boolean))];
+    for (const url of imports) out.push(`@import url("${url}");`);
+    if (imports.length) out.push('');
     out.push(`/* Made with Gel: ${String(theme.name || 'My theme').replace(/\*\//g, '')} */`, '');
 
-    const family = fontFamilyFor(s);
     if (family) {
       out.push('/* Font */',
         `body, button, input, textarea, select, h1, h2, h3, h4, h5, h6, p, span, a,`,
         `[class*="encore-text"], [class*="main-type"] {`,
-        `  font-family: "${family}", CircularSp, CircularSp-Arab, CircularSp-Hebr, CircularSp-Cyrl, CircularSp-Grek, CircularSp-Deva, sans-serif !important;`,
+        `  font-family: "${family}", ${FALLBACK} !important;`,
+        `}`, '');
+    }
+    if (heading) {
+      out.push('/* Heading font */',
+        `h1, h2, h1 *, h2 *, [class*="encore-text-headline"], [class*="encore-text-headline"] *,`,
+        `[class*="encore-text-title"], [class*="encore-text-title"] *, .main-entityHeader-title, .main-entityHeader-title * {`,
+        `  font-family: "${heading}", ${family ? `"${family}", ` : ''}${FALLBACK} !important;`,
         `}`, '');
     }
 
@@ -261,7 +321,7 @@
 
   const api = {
     THEME_FOLDER, SCHEME, COLOR_KEYS, ORIGINAL, FONTS,
-    defaultStyle, generatePalette, sanitizeColors, sanitizeStyle, fontFamilyFor, googleFontsUrl,
+    defaultStyle, generatePalette, sanitizeColors, sanitizeStyle, fontFamilyFor, headingFamilyFor, googleFontsUrl, isWebFont,
     buildColorIni, buildUserCss,
     buildThemeJs: theme => FX.buildThemeJs(sanitizeColors(theme.colors), sanitizeStyle(theme.style).fx),
   };

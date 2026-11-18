@@ -1,5 +1,5 @@
 (function () {
-  const { color: C, themegen: T, presets: { PRESETS }, picture, fx: FX } = window.Gel;
+  const { color: C, themegen: T, presets: { PRESETS, GROUPS }, picture, fx: FX } = window.Gel;
   const api = window.gelApi || mockApi();
 
   const LS_CURRENT = 'gel.v1.current';
@@ -27,6 +27,7 @@
     saved: loadJSON(LS_SAVED, []),
     selected: null,
     mode: 'dark',
+    filter: loadJSON('gel.v1.filter', 'all'),
     status: null,
     applying: false,
   };
@@ -98,6 +99,9 @@
     ensureFont(style.font);
     const family = T.fontFamilyFor(style);
     el.style.setProperty('--p-font', family ? `"${family}", 'Segoe UI', system-ui, sans-serif` : `'Segoe UI', system-ui, sans-serif`);
+    const heading = T.headingFamilyFor(style);
+    ensureFont(style.headingFont);
+    el.style.setProperty('--p-heading-font', heading ? `"${heading}", var(--p-font)` : 'var(--p-font)');
     el.style.setProperty('--p-radius', `${style.radius}px`);
     el.classList.toggle('glow', style.glow);
     const frame = el.querySelector('.p-frame');
@@ -166,24 +170,49 @@
     return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   }
 
+  function chipFont(t) {
+    const st = t.style || {};
+    if (st.headingFont && st.headingFont !== 'same' && T.isWebFont(st.headingFont)) return st.headingFont;
+    if (st.font === 'custom' && st.customFont) return st.customFont;
+    if (T.isWebFont(st.font)) return st.font;
+    return null;
+  }
+
+  function chipButton(t, attr, small) {
+    const font = chipFont(t);
+    if (font && T.isWebFont(font)) ensureFont(font);
+    const fontStyle = font ? ` style="--chip-font:'${escapeHtml(font)}', var(--display)"` : '';
+    return `<button class="chip" ${attr} aria-pressed="${state.selected === t.id}" title="${escapeHtml(t.blurb || t.name)}">
+        ${chipHtml(t)}
+        <span class="chip-label"><span class="chip-name"${fontStyle}>${escapeHtml(t.name)}</span><small>${escapeHtml(small)}</small></span>
+      </button>`;
+  }
+
   function renderGallery() {
-    $('#presetGrid').innerHTML = PRESETS.map(p => `
-      <button class="chip" data-preset="${p.id}" aria-pressed="${state.selected === p.id}" title="${escapeHtml(p.blurb)}">
-        ${chipHtml(p)}
-        <span class="chip-label">${escapeHtml(p.name)}<small>${escapeHtml(p.blurb)}</small></span>
-      </button>`).join('');
+    const counts = Object.fromEntries(GROUPS.map(g => [g.id, PRESETS.filter(p => p.group === g.id).length]));
+    if (state.filter !== 'all' && !counts[state.filter]) state.filter = 'all';
+    $('#groupFilters').innerHTML = [{ id: 'all', short: 'All' }].concat(GROUPS).map(g =>
+      `<button class="filter" role="radio" data-filter="${g.id}" aria-checked="${state.filter === g.id}">${escapeHtml(g.short)}<small>${g.id === 'all' ? PRESETS.length : counts[g.id]}</small></button>`).join('');
+    $('#presetGroups').innerHTML = GROUPS.filter(g => state.filter === 'all' || state.filter === g.id).map(g => `
+      <h3 class="group-title">${escapeHtml(g.name)} <small>${counts[g.id]} themes</small></h3>
+      <div class="swatchbook">${PRESETS.filter(p => p.group === g.id).map(p => chipButton(p, `data-preset="${p.id}"`, p.blurb)).join('')}</div>`).join('');
     $('#savedGrid').innerHTML = state.saved.map(s => `
       <div class="chip-wrap">
-        <button class="chip" data-saved="${s.id}" aria-pressed="${state.selected === s.id}">
-          ${chipHtml(s)}
-          <span class="chip-label">${escapeHtml(s.name)}<small>${s.style && s.style.bgImage ? 'With picture' : 'Saved theme'}</small></span>
-        </button>
+        ${chipButton(s, `data-saved="${s.id}"`, s.style && s.style.bgImage ? 'With picture' : 'Saved theme')}
         <button class="chip-delete" data-delete="${s.id}" aria-label="Delete ${escapeHtml(s.name)}"><svg><use href="#i-x"/></svg></button>
       </div>`).join('');
     $('#savedEmpty').hidden = state.saved.length > 0;
   }
 
-  $('#presetGrid').addEventListener('click', e => {
+  $('#groupFilters').addEventListener('click', e => {
+    const b = e.target.closest('[data-filter]');
+    if (!b || b.dataset.filter === state.filter) return;
+    state.filter = b.dataset.filter;
+    try { localStorage.setItem('gel.v1.filter', JSON.stringify(state.filter)); } catch (_) { /* not important */ }
+    renderGallery();
+  });
+
+  $('#presetGroups').addEventListener('click', e => {
     const b = e.target.closest('[data-preset]');
     if (!b) return;
     const p = PRESETS.find(x => x.id === b.dataset.preset);
@@ -326,11 +355,25 @@
   });
 
   // ---------- Style ----------
-  $('#fontSelect').innerHTML = T.FONTS.map(f => `<option value="${escapeHtml(f.id)}">${escapeHtml(f.name)}</option>`).join('');
+  function fontOptions(forHeadings) {
+    const groups = [];
+    for (const f of T.FONTS) {
+      if (forHeadings && (f.id === 'default' || f.id === 'custom')) continue;
+      let g = groups.find(x => x.name === f.group);
+      if (!g) groups.push(g = { name: f.group, fonts: [] });
+      g.fonts.push(f);
+    }
+    const head = forHeadings ? '<option value="same">Same as main font</option>' : '';
+    return head + groups.map(g => `<optgroup label="${escapeHtml(g.name)}">${g.fonts.map(f =>
+      `<option value="${escapeHtml(f.id)}">${escapeHtml(f.name)}${!forHeadings && f.display ? ' (best for headings)' : ''}</option>`).join('')}</optgroup>`).join('');
+  }
+  $('#fontSelect').innerHTML = fontOptions(false);
+  $('#headingFontSelect').innerHTML = fontOptions(true);
 
   function syncStyleInputs() {
     const s = state.theme.style;
     $('#fontSelect').value = s.font;
+    $('#headingFontSelect').value = s.headingFont;
     $('#customFont').hidden = s.font !== 'custom';
     $('#customFont').value = s.customFont;
     $('#fontHelp').textContent = s.font === 'custom'
@@ -369,6 +412,7 @@
   function styleChanged() { syncStyleInputs(); renderPreview(); persist(); }
 
   $('#fontSelect').addEventListener('change', e => { state.theme.style.font = e.target.value; styleChanged(); });
+  $('#headingFontSelect').addEventListener('change', e => { state.theme.style.headingFont = e.target.value; styleChanged(); });
   $('#customFont').addEventListener('input', e => { state.theme.style.customFont = e.target.value.replace(/[^\w \-]/g, ''); renderPreview(); persist(); });
   $('#radius').addEventListener('input', e => { state.theme.style.radius = Number(e.target.value); styleChanged(); });
   $('#glow').addEventListener('change', e => { state.theme.style.glow = e.target.checked; styleChanged(); });

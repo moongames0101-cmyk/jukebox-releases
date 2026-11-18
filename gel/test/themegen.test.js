@@ -58,7 +58,7 @@ test('user.css: colours only by default', () => {
 
 test('user.css: font import comes first, and family is applied', () => {
   const css = T.buildUserCss({ name: 'F', colors: T.ORIGINAL, style: Object.assign(T.defaultStyle(), { font: 'Space Grotesk' }) });
-  assert.ok(css.startsWith('@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@'));
+  assert.ok(css.startsWith('@import url("https://fonts.googleapis.com/css?family=Space+Grotesk:400,500,700,800,900&display=swap");'));
   assert.ok(css.includes('font-family: "Space Grotesk"'));
 });
 
@@ -133,4 +133,38 @@ test('user.css: animation layer in front vs behind', () => {
 test('sanitizeFx clamps silly values', () => {
   const f = FX.sanitizeFx({ effect: 'lasers', amount: 99, speed: -3, layer: 'sideways', color: 'nope' });
   assert.deepStrictEqual(f, { effect: 'none', amount: 1, speed: 0.4, layer: 'over', color: null });
+});
+
+const { GROUPS } = require('../src/lib/presets.js');
+
+test('lots of themes, each in a known group, with valid fonts', () => {
+  assert.ok(PRESETS.length >= 45, `only ${PRESETS.length} themes`);
+  for (const g of GROUPS) assert.ok(PRESETS.filter(p => p.group === g.id).length >= 5, g.id);
+  for (const p of PRESETS) {
+    assert.ok(GROUPS.some(g => g.id === p.group), `${p.id} group`);
+    assert.ok(p.style.headingFont === 'same' || T.isWebFont(p.style.headingFont), `${p.id} heading font`);
+  }
+  assert.ok(PRESETS.filter(p => p.group === 'anime').length >= 12);
+});
+
+test('heading font gets its own import and rule, after the main font', () => {
+  const css = T.buildUserCss({ name: 'h', colors: T.ORIGINAL, style: Object.assign(T.defaultStyle(), { font: 'Nunito', headingFont: 'Dela Gothic One' }) });
+  const imports = css.split('\n').filter(l => l.startsWith('@import'));
+  assert.strictEqual(imports.length, 2);
+  assert.ok(css.indexOf('/* Heading font */') > css.indexOf('/* Font */'));
+  assert.ok(css.includes('font-family: "Dela Gothic One", "Nunito",'));
+  const same = T.buildUserCss({ name: 's', colors: T.ORIGINAL, style: Object.assign(T.defaultStyle(), { font: 'Inter', headingFont: 'Inter' }) });
+  assert.strictEqual(same.split('\n').filter(l => l.startsWith('@import')).length, 1);
+  const bogus = T.sanitizeStyle({ headingFont: 'Comic Sans"; }' });
+  assert.strictEqual(bogus.headingFont, 'same');
+});
+
+test('every preset builds balanced CSS and runnable theme.js', () => {
+  for (const p of PRESETS) {
+    const css = T.buildUserCss(p);
+    assert.strictEqual((css.match(/{/g) || []).length, (css.match(/}/g) || []).length, p.id);
+    const js = T.buildThemeJs(p);
+    if (p.style.fx.effect === 'none') assert.strictEqual(js, '', p.id);
+    else assert.doesNotThrow(() => new Function(js), p.id);
+  }
 });

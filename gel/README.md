@@ -4,13 +4,6 @@ A desktop app for designing Spotify themes and applying them to the Spotify desk
 Gel writes a Spicetify theme (`color.ini`, `user.css` and, for animations, `theme.js`) into
 `%APPDATA%\spicetify\Themes\Gel` and runs Spicetify to apply it.
 
-## Getting it
-
-Download **Gel-Setup.exe** from the [gel release](https://github.com/moongames0101-cmyk/jukebox-releases/releases/tag/gel)
-and run it once. It installs for your user only (no admin), adds Gel to the Start menu and desktop,
-and from then on Gel updates itself: new versions download in the background and install when you
-restart Gel (or the next time you close it). You can also check in **Setup → Updates**.
-
 ## Using it
 
 1. Open Gel and go to **Setup**. Install Spicetify if Gel asks for it.
@@ -28,12 +21,12 @@ Spicetify only partly supports it. Either switch to Spotify's own installer
 
 ## Features
 
-- 13 built-in themes, laid out as a swatch book
+- 49 built-in themes in a swatch book, grouped into Anime, Font lovers, Moods and weather, Classics, and Light and bright
 - Build a full 18-colour palette from 3 colours, or from a picture
 - Fine-tune every Spicetify colour, with a live preview and a contrast check
-- Fonts (Google Fonts or any font on your PC), roundness, glow on play buttons
+- 50+ fonts (including Japanese-style ones) for the main text, plus a separate heading font; roundness; glow on play buttons
 - Background picture with dimming, see-through panels and frosted glass
-- Animated backgrounds: falling petals, snow, fireflies (in front of or behind the panels)
+- Animated backgrounds: petals, autumn leaves, snow, rain, bubbles, hearts, sparkles, twinkling stars, embers and fireflies (in front of or behind the panels)
 - Your own CSS
 - Save themes, export and import them as `.gel.json`
 
@@ -43,10 +36,5 @@ Spicetify only partly supports it. Either switch to Spotify's own installer
 npm install
 npm start            # run the app
 npm test             # theme file tests
-npm run dist:win     # build the Windows installer (needs Windows, or Wine on Linux)
+npm run dist:win     # build for Windows (portable: add "portable" target)
 ```
-
-Publishing is automatic: every push to `main` that changes `gel/` runs
-`.github/workflows/gel.yml` on a Windows machine, which builds version `1.0.<run number>` and
-uploads `Gel-Setup.exe` and `latest.yml` to the `gel` release. That release is a pre-release that
-is never marked latest, so the jukebox's own updates are unaffected.
