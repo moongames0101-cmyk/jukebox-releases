@@ -16,9 +16,11 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -124,7 +126,8 @@ public class MainActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.parseColor("#0A0716"));
-        root.addView(topBar(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        topBar = topBar();
+        root.addView(topBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(web, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         setContentView(root);
 
@@ -208,6 +211,7 @@ public class MainActivity extends Activity {
         // Back from Settings (e.g. after joining the pub's Wi-Fi): try again by itself
         String now = web.getUrl();
         if (now != null && now.startsWith(START) && now.contains("reason=offline")) openJukebox();
+        else if (now != null && now.startsWith(START)) tellStart("onAppBack", "{}"); // look for jukeboxes again
     }
 
     // ── Updates: a newer build on GitHub. Android 12 and newer: installed quietly once you leave the
@@ -244,6 +248,11 @@ public class MainActivity extends Activity {
     }
 
     private TextView updateButton;
+    private LinearLayout topBar;
+    /** The start-up screen (start.html?intro=1) plays once, when the app opens; the app waits for it */
+    private static final long INTRO_MS = 1700;
+    private boolean introPlayed = false;
+    private long introEndsAt = 0;
 
     private int dp(int v) {
         return Math.round(v * getResources().getDisplayMetrics().density);
@@ -459,7 +468,8 @@ public class MainActivity extends Activity {
                 open = null;
                 reason = answer[1] == 403 ? "expired" : "offline";
             }
-            ui.post(() -> {
+            // (after the start-up screen, if it's still playing)
+            ui.postDelayed(() -> {
                 if (mine != attempt || isFinishing()) return; // something newer happened meanwhile
                 if (open != null) {
                     triedInternet = open.equals(controlUrl(internet));
@@ -467,7 +477,7 @@ public class MainActivity extends Activity {
                 } else {
                     showStart(reason);
                 }
-            });
+            }, Math.max(0, introEndsAt - SystemClock.uptimeMillis()));
             if (open != null) learnWhichJukebox(local, internet, answer[0] == 200 ? local : baseOf(internet));
         }).start();
     }
@@ -540,6 +550,18 @@ public class MainActivity extends Activity {
         boolean hasInternet = prefs.getString("internet", "").length() > 0;
         String url = START + "?reason=" + Uri.encode(reason) + "&jukebox=" + Uri.encode(prefs.getString("local", ""))
                 + "&net=" + (hasInternet ? "1" : "0");
+        if (!introPlayed) {
+            // The start-up screen: full screen, so the top bar comes in once it's done
+            introPlayed = true;
+            url += "&intro=1";
+            introEndsAt = SystemClock.uptimeMillis() + INTRO_MS;
+            topBar.setVisibility(View.INVISIBLE);
+            ui.postDelayed(() -> {
+                topBar.setAlpha(0f);
+                topBar.setVisibility(View.VISIBLE);
+                topBar.animate().alpha(1f).setDuration(300).start();
+            }, INTRO_MS - 200);
+        }
         web.loadUrl(url);
     }
 
@@ -908,6 +930,21 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> {
                 prefs.edit().putString("local", local).putString("internet", "").remove("id").apply();
                 openJukebox();
+            });
+        }
+
+        /** "Open Wi-Fi settings" when no jukebox turned up (Android 10 and newer: the quick Wi-Fi panel) */
+        @JavascriptInterface
+        public void wifiSettings() {
+            onStartScreen(() -> {
+                try {
+                    startActivity(new Intent(Build.VERSION.SDK_INT >= 29 ? Settings.Panel.ACTION_WIFI : Settings.ACTION_WIFI_SETTINGS));
+                } catch (Exception e) {
+                    try {
+                        startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
+                    } catch (Exception ignored) {
+                    }
+                }
             });
         }
 

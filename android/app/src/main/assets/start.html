@@ -17,22 +17,10 @@
   h1 { font-size: 30px; line-height: 1.1; letter-spacing: -.04em; font-weight: 800; margin: 34px 0 0; }
   p { margin: 10px 0 0; color: var(--mist); }
   .note { margin-top: 18px; padding: 12px 14px; border-radius: 14px; background: rgba(255,179,92,.1); border: 1px solid rgba(255,179,92,.3); color: #ffd9a8; font-size: 15px; }
-  .steps { margin: 26px 0 0; padding: 0; list-style: none; counter-reset: s; }
-  .steps li { position: relative; padding: 0 0 14px 40px; color: var(--mist); font-size: 15px; }
-  .steps li::before { counter-increment: s; content: counter(s); position: absolute; left: 0; top: -1px; width: 26px; height: 26px; border-radius: 50%; background: var(--raised); color: var(--lilac); font-weight: 700; font-size: 14px; display: grid; place-items: center; }
-  .steps b { color: var(--text); font-weight: 600; }
   .grow { flex: 1; }
   .primary { width: 100%; height: 60px; border-radius: 18px; background: var(--grad); color: #fff; font-weight: 700; font-size: 18px; box-shadow: 0 14px 34px rgba(106,92,255,.45); display: flex; align-items: center; justify-content: center; gap: 10px; }
   .primary svg { width: 24px; height: 24px; }
   .secondary { width: 100%; height: 52px; margin-top: 10px; border-radius: 16px; background: var(--raised); font-weight: 700; }
-  details { margin-top: 16px; }
-  summary { color: var(--lilac); font-weight: 600; cursor: pointer; padding: 6px 0; list-style: none; text-align: center; }
-  summary::-webkit-details-marker { display: none; }
-  .type { display: flex; gap: 8px; margin-top: 10px; }
-  .type input { flex: 1; min-width: 0; height: 52px; padding: 0 16px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--raised); outline: none; font-size: 17px; }
-  .type input:focus { border-color: #7a5cff; }
-  .type button { height: 52px; padding: 0 18px; border-radius: 14px; background: var(--grad); color: #fff; font-weight: 700; }
-  .hint { font-size: 13.5px; color: var(--dim); text-align: center; }
   /* Jukeboxes on this Wi-Fi, and the owner's list */
   section { margin-top: 26px; }
   .head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
@@ -52,6 +40,7 @@
   .dot.off { background: rgba(236,230,255,.22); }
   .status { font-size: 14px; color: var(--dim); display: flex; align-items: center; gap: 10px; }
   .status .mini { width: 16px; height: 16px; border-width: 2.5px; margin: 0; flex: none; }
+  #wifiSettings { margin-top: 14px; }
   /* The owner's phone (tap the VYBE logo five times) */
   .scrim { position: fixed; inset: 0; background: rgba(5,3,12,.62); }
   .sheet { position: fixed; inset: auto 0 0 0; max-height: 92vh; overflow: auto; padding: 24px 24px 28px; border-radius: 24px 24px 0 0; background: #15102a; border-top: 1px solid var(--line); box-shadow: 0 -20px 50px rgba(0,0,0,.5); }
@@ -59,15 +48,28 @@
   .sheet pre { margin: 14px 0 0; padding: 12px; border-radius: 12px; background: var(--night); border: 1px solid var(--line); font: 11px/1.45 ui-monospace, Menlo, monospace; color: var(--mist); white-space: pre-wrap; word-break: break-all; max-height: 30vh; overflow: auto; }
   .sheet .primary { margin-top: 18px; }
   .sheet .close { display: block; margin: 14px auto 0; }
+  /* The start-up screen: VYBE draws itself in light, a beat line sweeps under it, then it glides up into its place */
+  #intro { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; pointer-events: none; }
+  #intro .bg { position: absolute; inset: 0; background: var(--night); pointer-events: auto; }
+  #intro .glow { position: absolute; left: 50%; top: 50%; width: 150vmax; height: 150vmax; margin: -75vmax 0 0 -75vmax; border-radius: 50%; opacity: 0;
+    background: radial-gradient(closest-side, rgba(154,61,255,.5), rgba(106,92,255,.26) 38%, rgba(43,140,255,.1) 62%, transparent); }
+  #intro .stack { position: relative; display: flex; flex-direction: column; align-items: center; }
+  #intro .big { width: min(64vw, 300px); aspect-ratio: 112 / 20; overflow: visible; filter: drop-shadow(-2px 0 12px rgba(154,61,255,.75)) drop-shadow(2px 0 12px rgba(43,140,255,.75)); }
+  #intro .beat { width: min(64vw, 300px); height: 3px; margin-top: 26px; border-radius: 3px; background: var(--grad); transform: scaleX(0); transform-origin: 0 50%; box-shadow: 0 0 14px rgba(106,92,255,.8); }
+  body.intro > :not(#intro) { opacity: 0; }
   .spinner { width: 44px; height: 44px; margin: 40px 0 0; border-radius: 50%; border: 4px solid var(--raised); border-top-color: #7a5cff; animation: spin .9s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
 </style>
 </head>
 <body>
+  <div id="intro" hidden aria-hidden="true"><div class="bg"></div><div class="glow"></div><div class="stack">
+    <svg class="big" viewBox="-8 -10 720 120"><defs><linearGradient id="si" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#e2dcf7"/><stop offset="1" stop-color="#a59fcf"/></linearGradient></defs><g fill="none" stroke="url(#si)" stroke-width="13" stroke-miterlimit="6" stroke-linecap="butt"><path d="M6 6 L75 94 L144 6"/><path d="M200 6 L265 52 L330 6 M265 52 V100"/><path d="M396 0 V100 M390 6 H468 A22 22 0 0 1 468 50 H396 M396 50 H474 A22 22 0 0 1 474 94 H390"/><path d="M560 6 H700 M574 50 H684 M560 94 H700"/></g></svg>
+    <div class="beat"></div>
+  </div></div>
   <svg class="wordmark" viewBox="-8 -10 720 120" role="img" aria-label="VYBE"><defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#e2dcf7"/><stop offset="1" stop-color="#a59fcf"/></linearGradient></defs><g fill="none" stroke="url(#s)" stroke-width="13" stroke-miterlimit="6"><path d="M6 6 L75 94 L144 6"/><path d="M200 6 L265 52 L330 6 M265 52 V100"/><path d="M396 0 V100 M390 6 H468 A22 22 0 0 1 468 50 H396 M396 50 H474 A22 22 0 0 1 474 94 H390"/><path d="M560 6 H700 M574 50 H684 M560 94 H700"/></g></svg>
   <h1 id="title">Connect to your jukebox</h1>
-  <p id="lead">Control the music, the queue and the volume from your phone.</p>
+  <p id="lead">Jukeboxes on this Wi-Fi show up below. Tap yours to control the music, the queue and the volume.</p>
   <div class="spinner" id="spinner" role="status" aria-label="Connecting" hidden></div>
   <div class="note" id="note" hidden></div>
   <section id="near" hidden aria-live="polite">
@@ -80,19 +82,9 @@
     <div class="list" id="fleetList"></div>
     <p class="status" id="fleetStatus"></p>
   </section>
-  <ol class="steps" id="steps">
-    <li>On the jukebox screen, open <b>Admin</b> and go to <b>API &amp; System Settings</b>.</li>
-    <li>Find <b>VYBE Control app</b>. Under <b>Step 2</b> there's a QR code.</li>
-    <li>Tap the button below and point your camera at it. Your phone needs to be on the pub's Wi-Fi.</li>
-  </ol>
+  <button class="secondary" id="wifiSettings" hidden>Open Wi-Fi settings</button>
   <div class="grow"></div>
   <button class="secondary" id="retry" hidden>Try again</button>
-  <button class="primary" id="scan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 12h8"/></svg>Scan the jukebox code</button>
-  <details id="manual">
-    <summary>Type the address instead</summary>
-    <form class="type" id="typeForm"><input id="addr" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="192.168.1.20:8787" aria-label="Jukebox address"><button type="submit">Connect</button></form>
-    <p class="hint">It's shown in Admin under Phone requests: “On the Wi-Fi at …”.</p>
-  </details>
   <div class="scrim" id="owner" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ownerTitle">
     <h2 id="ownerTitle">The owner's phone</h2>
@@ -112,6 +104,41 @@
   </div>
 <script>
   const q = new URLSearchParams(location.search);
+  // ── The start-up screen (the app asks for it once, when it opens; it takes 1.7 s, the app waits for it)
+  (function intro() {
+    if (q.get('intro') !== '1') return;
+    const el = document.getElementById('intro');
+    el.hidden = false;
+    document.body.classList.add('intro');
+    const done = () => { el.remove(); document.body.classList.remove('intro'); };
+    const content = [...document.body.children].filter((c) => c !== el && c.tagName !== 'SCRIPT');
+    const reveal = (ms) => content.forEach((c) => c.animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: ms, easing: 'cubic-bezier(.2,.7,.2,1)' }));
+    const big = el.querySelector('.big'), glow = el.querySelector('.glow'), beat = el.querySelector('.beat'), bg = el.querySelector('.bg');
+    if (!el.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setTimeout(() => { document.body.classList.remove('intro'); if (el.animate) { reveal(300); el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }).onfinish = done; } else done(); }, 1100);
+      return;
+    }
+    const ease = 'cubic-bezier(.6,0,.2,1)';
+    glow.animate([{ opacity: 0, transform: 'scale(.35)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 1000, easing: 'cubic-bezier(.2,.7,.2,1)', fill: 'forwards' });
+    big.querySelectorAll('path').forEach((p, i) => {
+      const len = p.getTotalLength();
+      p.style.strokeDasharray = len;
+      p.style.strokeDashoffset = len;
+      p.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: 520, delay: 60 + i * 110, easing: ease, fill: 'forwards' });
+    });
+    beat.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 420, delay: 640, easing: ease, fill: 'forwards' });
+    setTimeout(() => {
+      // Glide into the logo's place at the top while the page comes up
+      const mark = document.querySelector('body > .wordmark');
+      const from = big.getBoundingClientRect(), to = mark.getBoundingClientRect();
+      const dx = to.left + to.width / 2 - (from.left + from.width / 2), dy = to.top + to.height / 2 - (from.top + from.height / 2);
+      big.animate([{ transform: 'none' }, { transform: `translate(${dx}px, ${dy}px) scale(${to.width / from.width})` }], { duration: 520, easing: ease, fill: 'forwards' });
+      [beat, glow].forEach((x) => x.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, fill: 'forwards' }));
+      bg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 420, delay: 120, fill: 'forwards' });
+      setTimeout(() => { document.body.classList.remove('intro'); reveal(420); }, 160);
+      setTimeout(done, 600);
+    }, 1120);
+  })();
   const reason = q.get('reason') || '';
   const jukebox = q.get('jukebox') || '';
   const app = window.VybeApp;
@@ -122,27 +149,18 @@
   if (reason === 'connecting') {
     say('Connecting…', 'Finding your jukebox.');
     $('spinner').hidden = false;
-    $('steps').hidden = true;
-    $('scan').hidden = true;
-    $('manual').hidden = true;
   } else if (reason === 'offline') {
     say("Can't reach the jukebox", net
       ? "This phone isn't on the pub's Wi-Fi, and the jukebox's internet link isn't answering."
       : "This phone isn't on the pub's Wi-Fi, or the jukebox is switched off.");
     note.textContent = net
-      ? 'The internet link changes whenever the jukebox restarts. Next time you\'re at the pub, scan the Step 2 code again to get the new one.'
-      : 'To use the app away from the pub, turn on Requests from anywhere in the jukebox admin, then scan the Step 2 code again.';
+      ? 'The internet link changes whenever the jukebox restarts. To get the new one, point your phone\'s camera at the Step 2 code in the jukebox admin.'
+      : 'To use the app away from the pub, turn on Requests from anywhere in the jukebox admin, then point your phone\'s camera at the Step 2 code there.';
     note.hidden = false;
-    $('steps').hidden = true;
     $('retry').hidden = false;
   } else if (reason === 'expired') {
-    say('The jukebox has a new link', 'It changes whenever the jukebox restarts. Scan the Step 2 code in the jukebox admin to connect again.');
-    $('steps').hidden = true;
+    say('The jukebox has a new link', 'It changes whenever the jukebox restarts. On the pub\'s Wi-Fi, tap the jukebox below to connect again.');
     $('retry').hidden = false;
-  } else if (reason === 'scanfail') {
-    note.textContent = "The scanner couldn't open. Point your phone's Camera app at the Step 2 code instead, or type the address below.";
-    note.hidden = false;
-    document.getElementById('manual').open = true;
   } else if (reason === 'badcode') {
     note.textContent = "That isn't a VYBE Control code. Use the one under Step 2 in the jukebox admin.";
     note.hidden = false;
@@ -184,9 +202,12 @@
     else if (!r.done) status($('nearStatus'), r.found.length ? 'Still looking…' : 'Looking for jukeboxes on this Wi-Fi…', true);
     else if (!r.found.length) status($('nearStatus'), "No jukeboxes found on this Wi-Fi. Check the jukebox is switched on and this phone is on the pub's Wi-Fi.");
     else status($('nearStatus'), '');
-    // Found one: the QR code steps aren't needed
-    if (r.found.length && reason === '') $('steps').hidden = true;
+    // Nothing found: the way to the pub's Wi-Fi
+    $('wifiSettings').hidden = !(r.done && !r.found.length && app.wifiSettings);
   };
+  $('wifiSettings').addEventListener('click', () => app.wifiSettings());
+  // Back from Wi-Fi settings (or anywhere else): look again
+  window.onAppBack = () => { if (searchHere && !$('again').disabled) $('again').click(); };
   $('again').addEventListener('click', () => { $('again').disabled = true; status($('nearStatus'), 'Looking for jukeboxes on this Wi-Fi…', true); app.findNearby(); });
 
   // ── The owner's phone: every jukebox that's switched on, anywhere
@@ -243,9 +264,7 @@
   $('shareKey').addEventListener('click', () => app.shareOwnerKey());
   $('copyKey').addEventListener('click', () => app.copyOwnerKey());
 
-  document.getElementById('scan').addEventListener('click', () => app && app.scan());
   document.getElementById('retry').addEventListener('click', () => app && app.retry());
-  document.getElementById('typeForm').addEventListener('submit', (e) => { e.preventDefault(); const v = document.getElementById('addr').value.trim(); if (v && app) app.connect(v); });
 </script>
 </body>
 </html>
