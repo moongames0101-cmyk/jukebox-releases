@@ -8,6 +8,11 @@
          allowed for it), otherwise Android asks you to tap Update -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
+    <!-- "Listen on this phone": keeps playing with the screen off, with a "Listening" notification and Stop -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- The twice-a-day update check carries on after the phone restarts -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
@@ -51,6 +56,12 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/update_paths" />
         </provider>
+
+        <!-- "Listen on this phone" while the screen is off -->
+        <service
+            android:name=".ListenService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <!-- The twice-a-day update check, and how each quiet update went -->
         <service

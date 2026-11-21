@@ -60,6 +60,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.lang.ref.WeakReference;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -93,6 +94,8 @@ public class MainActivity extends Activity {
     private static final long PAGE_WAIT_MS = 20000;
 
     private WebView web;
+    /** The app on screen now, for the "Listening" notification's Stop */
+    private static WeakReference<MainActivity> current = new WeakReference<>(null);
     private SharedPreferences prefs;
     /** True while trying the internet link after the Wi-Fi address didn't answer */
     private boolean triedInternet = false;
@@ -116,6 +119,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        current = new WeakReference<>(this);
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         Updater.schedule(this);
         sayIfUpdated();
@@ -134,7 +138,7 @@ public class MainActivity extends Activity {
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
-        s.setMediaPlaybackRequiresUserGesture(true);
+        s.setMediaPlaybackRequiresUserGesture(false); // "Listen on this phone" moves on to the next song by itself
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         s.setSupportZoom(false);
         s.setUserAgentString(s.getUserAgentString() + " VYBEControl/1");
@@ -205,6 +209,41 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onDestroy() {
+        setListening(false, "");
+        if (current.get() == this) current = new WeakReference<>(null);
+        super.onDestroy();
+    }
+
+    // ── "Listen on this phone" (on the jukebox's controls page): keep it playing with the screen off
+
+    private void setListening(boolean on, String text) {
+        if (on) {
+            askToShowNotificationsOnce();
+            ListenService.show(this, text);
+        } else {
+            ListenService.hide(this);
+        }
+        // Keep the page (and its music) running at full speed while the app isn't on screen
+        if (Build.VERSION.SDK_INT >= 26) web.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, !on);
+    }
+
+    /** Android 13 and newer ask before an app shows notifications (the "Listening" one with Stop) */
+    private void askToShowNotificationsOnce() {
+        if (Build.VERSION.SDK_INT < 33 || prefs.getBoolean("askedNotifications", false)) return;
+        if (checkSelfPermission("android.permission.POST_NOTIFICATIONS") == android.content.pm.PackageManager.PERMISSION_GRANTED) return;
+        prefs.edit().putBoolean("askedNotifications", true).apply();
+        requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 33);
+    }
+
+    /** The notification's Stop: the page stops the song (and then tells the app) */
+    static void stopListeningFromNotification() {
+        final MainActivity a = current.get();
+        if (a == null) return;
+        a.ui.post(() -> a.web.evaluateJavascript("window.vybeStopListening&&window.vybeStopListening()", null));
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         checkForUpdate(false);
@@ -250,7 +289,7 @@ public class MainActivity extends Activity {
     private TextView updateButton;
     private LinearLayout topBar;
     /** The start-up screen (start.html?intro=1) plays once, when the app opens; the app waits for it */
-    private static final long INTRO_MS = 1700;
+    private static final long INTRO_MS = 2000;
     private boolean introPlayed = false;
     private long introEndsAt = 0;
 
@@ -946,6 +985,13 @@ public class MainActivity extends Activity {
                     }
                 }
             });
+        }
+
+        /** The controls page started or stopped "Listen on this phone" (text: the song, for the notification) */
+        @JavascriptInterface
+        public void listening(boolean on, String text) {
+            final String t = text == null ? "" : text.length() > 120 ? text.substring(0, 120) : text;
+            runOnUiThread(() -> setListening(on, t));
         }
 
         /** Look for jukeboxes on this Wi-Fi; answers window.onNearby({wifi, done, found: [...]}) */
