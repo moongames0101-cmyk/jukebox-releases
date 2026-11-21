@@ -95,6 +95,7 @@ public class MainActivity extends Activity {
     /** A search of this Wi-Fi, or a look at the owner's list, is running */
     private volatile boolean searching = false;
     private volatile boolean fleetBusy = false;
+    private volatile boolean makingKey = false;
     /** What the last search of this Wi-Fi found: its address → what it said */
     private final Map<String, JSONObject> nearby = Collections.synchronizedMap(new HashMap<>());
     /** Each jukebox gets this long to answer "who are you?" during a search */
@@ -564,6 +565,8 @@ public class MainActivity extends Activity {
             sendOwner();
             return;
         }
+        if (makingKey) return; // a second tap: one key is enough
+        makingKey = true;
         new Thread(() -> {
             try {
                 KeyPair k = Fleet.newKey();
@@ -573,6 +576,8 @@ public class MainActivity extends Activity {
                         .commit();
             } catch (Exception e) {
                 runOnUiThread(() -> Toast.makeText(this, "Couldn't make the key. Try again.", Toast.LENGTH_LONG).show());
+            } finally {
+                makingKey = false;
             }
             sendOwner();
         }).start();
@@ -660,7 +665,8 @@ public class MainActivity extends Activity {
     /** Asks each jukebox "who are you?" on its Wi-Fi address and its internet link: id → "wifi"/"internet" */
     private Map<String, String> checkLive(JSONObject known) {
         final Map<String, String> on = Collections.synchronizedMap(new HashMap<>());
-        ExecutorService pool = Executors.newFixedThreadPool(8);
+        // All at once (a jukebox that's off takes the full wait), so a long list doesn't run out of time
+        ExecutorService pool = Executors.newFixedThreadPool(Math.max(1, Math.min(48, known.length())));
         Iterator<String> ids = known.keys();
         while (ids.hasNext()) {
             final String id = ids.next();
@@ -678,7 +684,7 @@ public class MainActivity extends Activity {
         }
         pool.shutdown();
         try {
-            pool.awaitTermination(9, TimeUnit.SECONDS);
+            pool.awaitTermination(12, TimeUnit.SECONDS);
         } catch (InterruptedException ignored) {
         }
         pool.shutdownNow();
