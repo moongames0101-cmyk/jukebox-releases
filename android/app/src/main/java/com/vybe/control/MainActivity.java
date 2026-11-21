@@ -10,12 +10,18 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.util.TypedValue;
+import android.view.Gravity;
+import android.view.ViewGroup;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
@@ -114,7 +120,13 @@ public class MainActivity extends Activity {
 
         web = new WebView(this);
         web.setBackgroundColor(Color.parseColor("#0A0716"));
-        setContentView(web);
+        // A slim bar across the top (the app's version and "Check for updates"), then the page
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(Color.parseColor("#0A0716"));
+        root.addView(topBar(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(web, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        setContentView(root);
 
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
@@ -229,6 +241,72 @@ public class MainActivity extends Activity {
         readyUpdate = null;
         final android.content.Context app = getApplicationContext();
         new Thread(() -> Updater.install(app, file, version)).start();
+    }
+
+    private TextView updateButton;
+
+    private int dp(int v) {
+        return Math.round(v * getResources().getDisplayMetrics().density);
+    }
+
+    private String versionName() {
+        try {
+            String n = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            return n == null ? "" : n;
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private LinearLayout topBar() {
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setPadding(dp(20), 0, dp(8), 0);
+        TextView name = new TextView(this);
+        name.setText(("VYBE Control " + versionName()).trim());
+        name.setTextColor(Color.argb(128, 236, 230, 255));
+        name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        bar.addView(name, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        updateButton = new TextView(this);
+        updateButton.setText("Check for updates");
+        updateButton.setTextColor(Color.parseColor("#B58CFF"));
+        updateButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        updateButton.setTypeface(Typeface.DEFAULT_BOLD);
+        updateButton.setGravity(Gravity.CENTER);
+        updateButton.setMinHeight(dp(48));
+        updateButton.setPadding(dp(12), 0, dp(12), 0);
+        TypedValue ripple = new TypedValue();
+        if (getTheme().resolveAttribute(android.R.attr.selectableItemBackground, ripple, true)) updateButton.setBackgroundResource(ripple.resourceId);
+        updateButton.setOnClickListener(v -> checkNow());
+        bar.addView(updateButton, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        return bar;
+    }
+
+    /** "Check for updates": asks GitHub now, and if there's a new version, installs it straight away */
+    private void checkNow() {
+        updateButton.setEnabled(false);
+        updateButton.setText("Checking…");
+        new Thread(() -> {
+            long latest = -1;
+            try {
+                latest = Updater.latest();
+            } catch (Exception ignored) {
+            }
+            final long newest = latest;
+            runOnUiThread(() -> {
+                updateButton.setEnabled(true);
+                updateButton.setText("Check for updates");
+                if (newest < 0) {
+                    Toast.makeText(this, "Couldn't check for updates. Is this phone online?", Toast.LENGTH_LONG).show();
+                } else if (newest <= myVersion()) {
+                    Toast.makeText(this, ("VYBE Control is up to date " + versionName()).trim(), Toast.LENGTH_SHORT).show();
+                } else {
+                    prefs.edit().remove("skipped").apply(); // asked for it: even one they said "Later" to
+                    startUpdate(newest);
+                }
+            });
+        }).start();
     }
 
     /** "VYBE Control updated" the first time a new version opens */
