@@ -10,6 +10,7 @@
   [hidden] { display: none !important; }
   html, body { margin: 0; min-height: 100%; background: var(--night); color: var(--text); }
   body { font: 16px/1.5 system-ui, -apple-system, Roboto, sans-serif; background: radial-gradient(90% 45% at 50% 12%, rgba(106,92,255,.3), transparent 70%), var(--night); min-height: 100vh; display: flex; flex-direction: column; padding: 56px 24px 28px; }
+  body > * { flex-shrink: 0; } /* a long list makes the page scroll; nothing gets squashed under the buttons */
   button, input { font: inherit; color: inherit; }
   button { border: 0; cursor: pointer; }
   .wordmark { width: 112px; height: 20px; overflow: visible; filter: drop-shadow(-1px 0 5px rgba(154,61,255,.6)) drop-shadow(1px 0 5px rgba(43,140,255,.6)); }
@@ -32,6 +33,32 @@
   .type input:focus { border-color: #7a5cff; }
   .type button { height: 52px; padding: 0 18px; border-radius: 14px; background: var(--grad); color: #fff; font-weight: 700; }
   .hint { font-size: 13.5px; color: var(--dim); text-align: center; }
+  /* Jukeboxes on this Wi-Fi, and the owner's list */
+  section { margin-top: 26px; }
+  .head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  h2 { font-size: 17px; font-weight: 700; margin: 0; letter-spacing: -.01em; }
+  .link { background: none; padding: 6px 0; color: var(--lilac); font-weight: 600; font-size: 15px; }
+  .link:disabled { color: var(--dim); }
+  .list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 10px; }
+  .row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 10px 14px; border-radius: 16px; background: var(--raised); border: 1px solid var(--line); text-align: left; }
+  .row:active { border-color: #7a5cff; }
+  .row .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .row b { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row small { color: var(--dim); font-size: 13.5px; }
+  .row svg { flex: none; width: 18px; height: 18px; color: var(--dim); }
+  .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #7a5cff; }
+  .dot.on { background: #45d483; box-shadow: 0 0 0 4px rgba(69,212,131,.16); }
+  .dot.maybe { background: #ffb35c; }
+  .dot.off { background: rgba(236,230,255,.22); }
+  .status { font-size: 14px; color: var(--dim); display: flex; align-items: center; gap: 10px; }
+  .status .mini { width: 16px; height: 16px; border-width: 2.5px; margin: 0; flex: none; }
+  /* The owner's phone (tap the VYBE logo five times) */
+  .scrim { position: fixed; inset: 0; background: rgba(5,3,12,.62); }
+  .sheet { position: fixed; inset: auto 0 0 0; max-height: 92vh; overflow: auto; padding: 24px 24px 28px; border-radius: 24px 24px 0 0; background: #15102a; border-top: 1px solid var(--line); box-shadow: 0 -20px 50px rgba(0,0,0,.5); }
+  .sheet h2 { font-size: 22px; }
+  .sheet pre { margin: 14px 0 0; padding: 12px; border-radius: 12px; background: var(--night); border: 1px solid var(--line); font: 11px/1.45 ui-monospace, Menlo, monospace; color: var(--mist); white-space: pre-wrap; word-break: break-all; max-height: 30vh; overflow: auto; }
+  .sheet .primary { margin-top: 18px; }
+  .sheet .close { display: block; margin: 14px auto 0; }
   .spinner { width: 44px; height: 44px; margin: 40px 0 0; border-radius: 50%; border: 4px solid var(--raised); border-top-color: #7a5cff; animation: spin .9s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
@@ -43,6 +70,16 @@
   <p id="lead">Control the music, the queue and the volume from your phone.</p>
   <div class="spinner" id="spinner" role="status" aria-label="Connecting" hidden></div>
   <div class="note" id="note" hidden></div>
+  <section id="near" hidden aria-live="polite">
+    <div class="head"><h2>On this Wi-Fi</h2><button class="link" id="again" disabled>Look again</button></div>
+    <div class="list" id="nearList"></div>
+    <p class="status" id="nearStatus"></p>
+  </section>
+  <section id="fleet" hidden aria-live="polite">
+    <div class="head"><h2>All your jukeboxes</h2><button class="link" id="fleetAgain" disabled>Check again</button></div>
+    <div class="list" id="fleetList"></div>
+    <p class="status" id="fleetStatus"></p>
+  </section>
   <ol class="steps" id="steps">
     <li>On the jukebox screen, open <b>Admin</b> and go to <b>API &amp; System Settings</b>.</li>
     <li>Find <b>VYBE Control app</b>. Under <b>Step 2</b> there's a QR code.</li>
@@ -56,6 +93,23 @@
     <form class="type" id="typeForm"><input id="addr" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="192.168.1.20:8787" aria-label="Jukebox address"><button type="submit">Connect</button></form>
     <p class="hint">It's shown in Admin under Phone requests: “On the Wi-Fi at …”.</p>
   </details>
+  <div class="scrim" id="owner" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ownerTitle">
+    <h2 id="ownerTitle">The owner's phone</h2>
+    <div id="ownerNew">
+      <p>Make this the phone that sees every VYBE jukebox that's switched on, wherever it is. Only do this on your own phone.</p>
+      <button class="primary" id="makeOwner">Make this the owner's phone</button>
+    </div>
+    <div id="ownerHas" hidden>
+      <p>This is the owner's phone. Jukeboxes lock their check-ins with the key below, so only this phone can read them.</p>
+      <p>Add the key once to the jukebox-releases repository on GitHub, as <b style="white-space:nowrap">fleet/owner-key.pem</b>. Jukeboxes that are switched on pick it up within an hour.</p>
+      <pre id="ownerKey"></pre>
+      <button class="secondary" id="shareKey">Share the key</button>
+      <button class="secondary" id="copyKey">Copy the key</button>
+    </div>
+    <button class="link close" id="ownerClose">Close</button>
+  </div>
+  </div>
 <script>
   const q = new URLSearchParams(location.search);
   const reason = q.get('reason') || '';
@@ -93,6 +147,102 @@
     note.textContent = "That isn't a VYBE Control code. Use the one under Step 2 in the jukebox admin.";
     note.hidden = false;
   }
+  // ── Jukeboxes on this Wi-Fi: the app asks every address "who are you?"; each appears as soon as it answers
+  const chevron = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
+  function row(name, sub, state, onTap) {
+    const b = document.createElement('button');
+    b.className = 'row';
+    const dot = document.createElement('span'); dot.className = 'dot ' + state;
+    const txt = document.createElement('span'); txt.className = 'txt';
+    const n = document.createElement('b'); n.textContent = name;
+    const s = document.createElement('small'); s.textContent = sub;
+    txt.append(n, s);
+    b.append(dot, txt);
+    b.insertAdjacentHTML('beforeend', chevron);
+    b.addEventListener('click', onTap);
+    return b;
+  }
+  function status(el, text, busy) {
+    el.textContent = '';
+    if (busy) { const sp = document.createElement('span'); sp.className = 'spinner mini'; el.append(sp); }
+    if (text) el.append(document.createTextNode(text));
+    el.hidden = !text;
+  }
+  const searchHere = reason !== 'connecting' && app && app.findNearby;
+  if (searchHere) {
+    $('near').hidden = false;
+    status($('nearStatus'), 'Looking for jukeboxes on this Wi-Fi…', true);
+    app.findNearby();
+  }
+  window.onNearby = (text) => {
+    const r = JSON.parse(text);
+    const list = $('nearList');
+    list.textContent = '';
+    r.found.forEach((j) => list.append(row(j.name, j.host, 'on', () => app.pickNearby(j.base))));
+    $('again').disabled = !r.done;
+    if (!r.wifi) status($('nearStatus'), "This phone isn't on Wi-Fi. Join the pub's Wi-Fi to find its jukebox.");
+    else if (!r.done) status($('nearStatus'), r.found.length ? 'Still looking…' : 'Looking for jukeboxes on this Wi-Fi…', true);
+    else if (!r.found.length) status($('nearStatus'), "No jukeboxes found on this Wi-Fi. Check the jukebox is switched on and this phone is on the pub's Wi-Fi.");
+    else status($('nearStatus'), '');
+    // Found one: the QR code steps aren't needed
+    if (r.found.length && reason === '') $('steps').hidden = true;
+  };
+  $('again').addEventListener('click', () => { $('again').disabled = true; status($('nearStatus'), 'Looking for jukeboxes on this Wi-Fi…', true); app.findNearby(); });
+
+  // ── The owner's phone: every jukebox that's switched on, anywhere
+  const clock = (t) => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const when = (t) => (new Date(t).toDateString() === new Date().toDateString() ? 'at ' + clock(t) : new Date(t).toLocaleDateString([], { day: 'numeric', month: 'short' }) + ' at ' + clock(t));
+  const RECENT_MS = 70 * 60 * 1000; // jukeboxes check in every hour
+  function how(j, checking) {
+    if (j.via === 'wifi') return ['on', 'On now, on this Wi-Fi'];
+    if (j.via === 'internet') return ['on', 'On now'];
+    if (checking) return ['maybe', 'Checking…'];
+    const recent = j.heard && Date.now() - j.heard < RECENT_MS;
+    if (recent && !j.net) return ['maybe', 'Checked in ' + when(j.heard)];
+    return ['off', j.heard ? 'Off. Last seen ' + when(j.heard) : 'Off'];
+  }
+  window.onFleet = (text) => {
+    const r = JSON.parse(text);
+    const order = { on: 0, maybe: 1, off: 2 };
+    const rows = r.jukeboxes.map((j) => ({ j, h: how(j, r.checking) }))
+      .sort((a, b) => order[a.h[0]] - order[b.h[0]] || a.j.name.localeCompare(b.j.name));
+    const list = $('fleetList');
+    list.textContent = '';
+    rows.forEach(({ j, h }) => list.append(row(j.name, h[1], h[0], () => app.pickFleet(j.id))));
+    $('fleetAgain').disabled = r.checking;
+    if (r.checking) status($('fleetStatus'), rows.length ? '' : 'Checking which jukeboxes are on…', !rows.length);
+    else if (r.stale) status($('fleetStatus'), "Couldn't check for new jukeboxes just now. This is what the app knew last time.");
+    else if (!rows.length) status($('fleetStatus'), 'No jukeboxes have checked in yet. Once the owner key is on GitHub, each jukebox checks in within an hour of being switched on.');
+    else status($('fleetStatus'), '');
+  };
+  $('fleetAgain').addEventListener('click', () => { $('fleetAgain').disabled = true; app.loadFleet(); });
+
+  let owner = false;
+  window.onOwner = (text) => {
+    const r = JSON.parse(text);
+    const was = owner;
+    owner = !!r.owner;
+    $('ownerNew').hidden = owner;
+    $('ownerHas').hidden = !owner;
+    $('ownerKey').textContent = r.key || '';
+    $('makeOwner').disabled = false;
+    $('makeOwner').textContent = "Make this the owner's phone";
+    if (owner && !was && reason !== 'connecting') { $('fleet').hidden = false; app.loadFleet(); }
+  };
+  if (searchHere && app.ownerState) app.ownerState();
+  // Five quick taps on the VYBE logo
+  let taps = [];
+  document.querySelector('.wordmark').addEventListener('click', () => {
+    const now = Date.now();
+    taps = taps.filter((t) => now - t < 2500).concat(now);
+    if (taps.length >= 5 && app && app.ownerState) { taps = []; $('owner').hidden = false; app.ownerState(); }
+  });
+  $('ownerClose').addEventListener('click', () => { $('owner').hidden = true; });
+  $('owner').addEventListener('click', (e) => { if (e.target === $('owner')) $('owner').hidden = true; });
+  $('makeOwner').addEventListener('click', () => { $('makeOwner').disabled = true; $('makeOwner').textContent = 'Making the key…'; app.makeOwner(); });
+  $('shareKey').addEventListener('click', () => app.shareOwnerKey());
+  $('copyKey').addEventListener('click', () => app.copyOwnerKey());
+
   document.getElementById('scan').addEventListener('click', () => app && app.scan());
   document.getElementById('retry').addEventListener('click', () => app && app.retry());
   document.getElementById('typeForm').addEventListener('submit', (e) => { e.preventDefault(); const v = document.getElementById('addr').value.trim(); if (v && app) app.connect(v); });

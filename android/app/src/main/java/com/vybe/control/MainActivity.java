@@ -3,6 +3,9 @@ package com.vybe.control;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
@@ -31,6 +34,7 @@ import com.google.mlkit.vision.codescanner.GmsBarcodeScanning;
 
 import androidx.core.content.FileProvider;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
@@ -40,6 +44,17 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * VYBE Control: the jukebox owner's remote.
@@ -52,6 +67,10 @@ import java.net.URL;
  * Opening it never leaves a blank screen: it shows "Connecting…", asks the Wi-Fi address and the
  * internet link at the same time (with short time limits), opens whichever answers, and otherwise
  * says why it can't reach the jukebox.
+ *
+ * The start screen lists the jukeboxes on the phone's Wi-Fi (Finder asks every address "who are
+ * you?"). On the owner's phone it also lists every VYBE jukebox that's switched on, anywhere: each
+ * jukebox posts a note sealed with the owner's key (Fleet), and only this phone can open them.
  */
 public class MainActivity extends Activity {
     private static final String PREFS = "vybe";
@@ -73,6 +92,13 @@ public class MainActivity extends Activity {
     /** Goes up with every attempt to open the jukebox, so answers to an older attempt are ignored */
     private int attempt = 0;
     private boolean pageLoaded = false;
+    /** A search of this Wi-Fi, or a look at the owner's list, is running */
+    private volatile boolean searching = false;
+    private volatile boolean fleetBusy = false;
+    /** What the last search of this Wi-Fi found: its address → what it said */
+    private final Map<String, JSONObject> nearby = Collections.synchronizedMap(new HashMap<>());
+    /** Each jukebox gets this long to answer "who are you?" during a search */
+    private static final int HELLO_WAIT_MS = 900;
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
@@ -314,7 +340,40 @@ public class MainActivity extends Activity {
                     showStart(reason);
                 }
             });
+            if (open != null) learnWhichJukebox(local, internet, answer[0] == 200 ? local : baseOf(internet));
         }).start();
+    }
+
+    /** Remember which jukebox this is, so the app can find it on the Wi-Fi again if its address changes */
+    private void learnWhichJukebox(String local, String internet, String base) {
+        String id = idOf(Finder.httpHello(base, 3000));
+        if (id.length() == 0) return;
+        // Only if it's still the jukebox the app was asked to open
+        if (local.equals(prefs.getString("local", "")) && internet.equals(prefs.getString("internet", "")))
+            prefs.edit().putString("id", id).apply();
+    }
+
+    /** https://x.trycloudflare.com/?k=… → https://x.trycloudflare.com ("" if it isn't a link) */
+    private static String baseOf(String link) {
+        if (!isWeb(link)) return "";
+        Uri u = Uri.parse(link);
+        return u.getScheme() + "://" + u.getEncodedAuthority();
+    }
+
+    /** The id in a jukebox's "who are you?" answer, or "" */
+    private static String idOf(String hello) {
+        if (!Finder.isJukebox(hello)) return "";
+        try {
+            return text(new JSONObject(hello), "id");
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /** A string from a note ("" for anything else: org.json turns null into "null") */
+    private static String text(JSONObject o, String key) {
+        Object v = o == null ? null : o.opt(key);
+        return v instanceof String ? (String) v : "";
     }
 
     /** The HTTP status an address answers with (302 = the internet link let us in), or 0 if it doesn't answer in time */
@@ -367,6 +426,301 @@ public class MainActivity extends Activity {
         prefs.edit()
                 .putString("local", isWeb(local) ? local : "")
                 .putString("internet", isWeb(internet) ? internet : "")
+                .remove("id") // learnt once it's open
+                .apply();
+        openJukebox();
+    }
+
+    // ── The start screen's lists. Only the app's own start screen gets answers: never a page served
+    //    by a jukebox (or by something on the Wi-Fi pretending to be one).
+
+    private void onStartScreen(Runnable r) {
+        runOnUiThread(() -> {
+            String now = web.getUrl();
+            if (!isFinishing() && now != null && now.startsWith(START)) r.run();
+        });
+    }
+
+    /** window[fn](json) on the start screen */
+    private void tellStart(String fn, String json) {
+        final String js = "window." + fn + "&&window." + fn + "(" + JSONObject.quote(json) + ")";
+        onStartScreen(() -> web.evaluateJavascript(js, null));
+    }
+
+    /** Every jukebox on this phone's Wi-Fi: each one appears as soon as it answers */
+    private void findNearby() {
+        if (searching) return;
+        searching = true;
+        new Thread(() -> {
+            try {
+                Object[] wifi = Finder.wifiAddress();
+                if (wifi == null) {
+                    tellStart("onNearby", "{\"wifi\":false,\"done\":true,\"found\":[]}");
+                    return;
+                }
+                nearby.clear();
+                final List<JSONObject> shown = Collections.synchronizedList(new ArrayList<>());
+                tellStart("onNearby", nearbyJson(shown, false));
+                List<String> hosts = Finder.hosts((byte[]) wifi[0], (Integer) wifi[1]);
+                Finder.sweep(hosts, base -> Finder.httpHello(base, HELLO_WAIT_MS), 96, 9000, f -> {
+                    JSONObject j = describe(f);
+                    if (j == null) return;
+                    synchronized (shown) {
+                        for (JSONObject o : shown) if (text(o, "id").equals(text(j, "id"))) return; // the same jukebox twice
+                        shown.add(j);
+                    }
+                    nearby.put(f.base, j);
+                    tellStart("onNearby", nearbyJson(shown, false));
+                });
+                tellStart("onNearby", nearbyJson(shown, true));
+                // The saved jukebox has a new Wi-Fi address (routers do that): use it
+                final String saved = prefs.getString("id", "");
+                if (saved.length() > 0) {
+                    synchronized (shown) {
+                        for (JSONObject j : shown) {
+                            final String base = text(j, "base");
+                            if (saved.equals(text(j, "id")) && !base.equals(prefs.getString("local", ""))) {
+                                onStartScreen(() -> {
+                                    prefs.edit().putString("local", base).apply();
+                                    openJukebox();
+                                });
+                                break;
+                            }
+                        }
+                    }
+                }
+            } finally {
+                searching = false;
+            }
+        }).start();
+    }
+
+    private static JSONObject describe(Finder.Found f) {
+        try {
+            JSONObject hello = new JSONObject(f.hello);
+            String id = text(hello, "id");
+            if (id.length() == 0) return null;
+            JSONObject j = new JSONObject();
+            j.put("id", id);
+            j.put("name", text(hello, "name").length() > 0 ? text(hello, "name") : "VYBE jukebox");
+            j.put("version", text(hello, "version"));
+            j.put("base", f.base);
+            j.put("host", Uri.parse(f.base).getHost());
+            return j;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static String nearbyJson(List<JSONObject> shown, boolean done) {
+        try {
+            JSONArray list = new JSONArray();
+            synchronized (shown) {
+                List<JSONObject> sorted = new ArrayList<>(shown);
+                sorted.sort((a, b) -> text(a, "name").compareToIgnoreCase(text(b, "name")));
+                for (JSONObject j : sorted) list.put(j);
+            }
+            return new JSONObject().put("wifi", true).put("done", done).put("found", list).toString();
+        } catch (Exception e) {
+            return "{\"wifi\":true,\"done\":true,\"found\":[]}";
+        }
+    }
+
+    /** Tapped a jukebox the search found */
+    private void pickNearby(String base) {
+        JSONObject j = nearby.get(base);
+        if (j == null) return;
+        String id = text(j, "id");
+        SharedPreferences.Editor e = prefs.edit().putString("local", base).putString("id", id);
+        // Picking the same jukebox again keeps its internet link
+        if (!id.equals(prefs.getString("id", ""))) e.putString("internet", "");
+        e.apply();
+        openJukebox();
+    }
+
+    // ── The owner's phone: its key, and every jukebox that's checked in
+
+    private PrivateKey ownerKey() {
+        String t = prefs.getString("ownerKey", "");
+        if (t.length() == 0) return null;
+        try {
+            return Fleet.readPrivate(t);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void sendOwner() {
+        String pem = prefs.getString("ownerPub", "");
+        try {
+            tellStart("onOwner", new JSONObject().put("owner", pem.length() > 0 && ownerKey() != null).put("key", pem).toString());
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** Make this the owner's phone (once: the key it makes is the one the jukeboxes use) */
+    private void makeOwner() {
+        if (prefs.getString("ownerKey", "").length() > 0) {
+            sendOwner();
+            return;
+        }
+        new Thread(() -> {
+            try {
+                KeyPair k = Fleet.newKey();
+                prefs.edit()
+                        .putString("ownerKey", Fleet.privateText(k.getPrivate()))
+                        .putString("ownerPub", Fleet.publicPem(k.getPublic()))
+                        .commit();
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(this, "Couldn't make the key. Try again.", Toast.LENGTH_LONG).show());
+            }
+            sendOwner();
+        }).start();
+    }
+
+    private void shareOwnerKey() {
+        String pem = prefs.getString("ownerPub", "");
+        if (pem.length() == 0) return;
+        Intent send = new Intent(Intent.ACTION_SEND);
+        send.setType("text/plain");
+        send.putExtra(Intent.EXTRA_SUBJECT, "VYBE owner key (fleet/owner-key.pem)");
+        send.putExtra(Intent.EXTRA_TEXT, pem);
+        try {
+            startActivity(Intent.createChooser(send, "Share the owner key"));
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void copyOwnerKey() {
+        String pem = prefs.getString("ownerPub", "");
+        if (pem.length() == 0) return;
+        ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (cm == null) return;
+        cm.setPrimaryClip(ClipData.newPlainText("VYBE owner key", pem));
+        if (Build.VERSION.SDK_INT < 33) Toast.makeText(this, "Key copied", Toast.LENGTH_SHORT).show(); // Android 13 says so itself
+    }
+
+    private JSONObject knownJukeboxes() {
+        try {
+            return new JSONObject(prefs.getString("fleet", "{}"));
+        } catch (Exception e) {
+            return new JSONObject();
+        }
+    }
+
+    /** Every jukebox that's checked in: first what the app knew last time, then fresh, checked live */
+    private void loadFleet() {
+        final PrivateKey key = ownerKey();
+        final String pem = prefs.getString("ownerPub", "");
+        if (key == null || pem.length() == 0) return;
+        tellStart("onFleet", fleetJson(knownJukeboxes(), null, true, false));
+        if (fleetBusy) return;
+        fleetBusy = true;
+        new Thread(() -> {
+            try {
+                JSONObject known = knownJukeboxes();
+                boolean reached = false;
+                try {
+                    String topic = Fleet.topicFor(Fleet.readPublic(pem));
+                    // Only what's new since last time (ntfy's own clock, with a few minutes to spare)
+                    long polled = prefs.getLong("fleetPolled", 0), newest = polled;
+                    String since = polled > 0 ? String.valueOf(polled - 300) : "all";
+                    String lines = new String(download(Fleet.NTFY + topic + "/json?poll=1&since=" + since, 4 * 1024 * 1024), "UTF-8");
+                    reached = true;
+                    for (String line : lines.split("\n")) {
+                        try {
+                            JSONObject m = new JSONObject(line);
+                            if (!"message".equals(text(m, "event"))) continue;
+                            String opened = Fleet.open(text(m, "message"), key);
+                            if (opened == null) continue; // not from one of the owner's jukeboxes
+                            JSONObject note = new JSONObject(opened);
+                            String id = text(note, "id");
+                            if (id.length() == 0 || id.length() > 80) continue;
+                            long heard = m.optLong("time", 0) * 1000;
+                            newest = Math.max(newest, heard / 1000);
+                            JSONObject old = known.optJSONObject(id);
+                            if (old != null && old.optLong("heard", 0) >= heard) continue;
+                            note.put("heard", heard);
+                            known.put(id, note);
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    prefs.edit().putString("fleet", known.toString()).putLong("fleetPolled", newest).apply();
+                } catch (Exception ignored) {
+                    // No internet, or ntfy didn't answer: still check the ones the app already knows
+                }
+                tellStart("onFleet", fleetJson(known, null, true, !reached));
+                tellStart("onFleet", fleetJson(known, checkLive(known), false, !reached));
+            } finally {
+                fleetBusy = false;
+            }
+        }).start();
+    }
+
+    /** Asks each jukebox "who are you?" on its Wi-Fi address and its internet link: id → "wifi"/"internet" */
+    private Map<String, String> checkLive(JSONObject known) {
+        final Map<String, String> on = Collections.synchronizedMap(new HashMap<>());
+        ExecutorService pool = Executors.newFixedThreadPool(8);
+        Iterator<String> ids = known.keys();
+        while (ids.hasNext()) {
+            final String id = ids.next();
+            final JSONObject note = known.optJSONObject(id);
+            if (note == null) continue;
+            pool.execute(() -> {
+                String local = text(note, "local");
+                if (isWeb(local) && id.equals(idOf(Finder.httpHello(local, 1500)))) {
+                    on.put(id, "wifi");
+                    return;
+                }
+                String net = baseOf(text(note, "internet"));
+                if (net.length() > 0 && id.equals(idOf(Finder.httpHello(net, 6000)))) on.put(id, "internet");
+            });
+        }
+        pool.shutdown();
+        try {
+            pool.awaitTermination(9, TimeUnit.SECONDS);
+        } catch (InterruptedException ignored) {
+        }
+        pool.shutdownNow();
+        return on;
+    }
+
+    /** What the start screen shows: names and how each one is, never its links */
+    private static String fleetJson(JSONObject known, Map<String, String> on, boolean checking, boolean stale) {
+        try {
+            JSONArray list = new JSONArray();
+            Iterator<String> ids = known.keys();
+            while (ids.hasNext()) {
+                String id = ids.next();
+                JSONObject n = known.optJSONObject(id);
+                if (n == null) continue;
+                JSONObject j = new JSONObject();
+                j.put("id", id);
+                j.put("name", text(n, "name").length() > 0 ? text(n, "name") : "VYBE jukebox");
+                j.put("version", text(n, "version"));
+                j.put("heard", n.optLong("heard", 0));
+                j.put("net", isWeb(text(n, "internet")));
+                j.put("wifi", isWeb(text(n, "local")));
+                String via = on == null ? null : on.get(id);
+                if (via != null) j.put("via", via);
+                list.put(j);
+            }
+            return new JSONObject().put("checking", checking).put("stale", stale).put("jukeboxes", list).toString();
+        } catch (Exception e) {
+            return "{\"checking\":false,\"stale\":true,\"jukeboxes\":[]}";
+        }
+    }
+
+    /** Tapped one of the owner's jukeboxes */
+    private void pickFleet(String id) {
+        JSONObject note = knownJukeboxes().optJSONObject(id == null ? "" : id);
+        if (note == null) return;
+        String local = text(note, "local"), internet = text(note, "internet");
+        if (!isWeb(local) && !isWeb(internet)) return;
+        prefs.edit()
+                .putString("local", isWeb(local) ? local : "")
+                .putString("internet", isWeb(internet) ? internet : "")
+                .putString("id", id)
                 .apply();
         openJukebox();
     }
@@ -419,9 +773,53 @@ public class MainActivity extends Activity {
             if (Uri.parse(a).getPort() == -1 && a.startsWith("http://")) a = a.replaceAll("/+$", "") + ":8787";
             final String local = a;
             runOnUiThread(() -> {
-                prefs.edit().putString("local", local).putString("internet", "").apply();
+                prefs.edit().putString("local", local).putString("internet", "").remove("id").apply();
                 openJukebox();
             });
+        }
+
+        /** Look for jukeboxes on this Wi-Fi; answers window.onNearby({wifi, done, found: [...]}) */
+        @JavascriptInterface
+        public void findNearby() {
+            onStartScreen(MainActivity.this::findNearby);
+        }
+
+        /** Open a jukebox the search found (its address, e.g. http://192.168.1.20:8787) */
+        @JavascriptInterface
+        public void pickNearby(String base) {
+            onStartScreen(() -> MainActivity.this.pickNearby(base));
+        }
+
+        /** Whether this is the owner's phone; answers window.onOwner({owner, key}) */
+        @JavascriptInterface
+        public void ownerState() {
+            onStartScreen(MainActivity.this::sendOwner);
+        }
+
+        @JavascriptInterface
+        public void makeOwner() {
+            onStartScreen(MainActivity.this::makeOwner);
+        }
+
+        @JavascriptInterface
+        public void shareOwnerKey() {
+            onStartScreen(MainActivity.this::shareOwnerKey);
+        }
+
+        @JavascriptInterface
+        public void copyOwnerKey() {
+            onStartScreen(MainActivity.this::copyOwnerKey);
+        }
+
+        /** The owner's jukeboxes; answers window.onFleet({checking, stale, jukeboxes: [...]}) */
+        @JavascriptInterface
+        public void loadFleet() {
+            onStartScreen(MainActivity.this::loadFleet);
+        }
+
+        @JavascriptInterface
+        public void pickFleet(String id) {
+            onStartScreen(() -> MainActivity.this.pickFleet(id));
         }
 
         @JavascriptInterface
@@ -429,11 +827,11 @@ public class MainActivity extends Activity {
             runOnUiThread(MainActivity.this::openJukebox);
         }
 
-        /** "Connect to a different jukebox" */
+        /** "Connect to a different jukebox": forgets this one (the owner's key and list stay) */
         @JavascriptInterface
         public void forget() {
             runOnUiThread(() -> {
-                prefs.edit().clear().apply();
+                prefs.edit().remove("local").remove("internet").remove("id").apply();
                 web.clearHistory();
                 showStart("");
             });
