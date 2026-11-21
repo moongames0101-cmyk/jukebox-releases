@@ -2,8 +2,9 @@
 #
 # The app is signed with a key worked out from the VYBE_SIGNING_SEED repository secret
 # (android/signing/make_key.py), so every build has the same key and installs over the
-# last one. The app checks the phone-app release when it opens and offers each new
-# version ("Update VYBE Control?").
+# last one. The app checks the phone-app release when it opens and twice a day. On Android 12
+# and newer it installs each new version by itself, quietly, once "Install unknown apps" is
+# allowed for it; otherwise (or when Android insists) it asks "Update VYBE Control?".
 #
 # - Every change to android/ is built and, once the secret is set, published.
 # - Actions → "VYBE Control (Android app)" → Run workflow publishes the current code again.

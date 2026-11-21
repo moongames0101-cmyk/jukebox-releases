@@ -76,7 +76,7 @@ public class MainActivity extends Activity {
     private static final String PREFS = "vybe";
     private static final String START = "file:///android_asset/start.html";
     /** Published with every new build of the app (see .github/workflows/phone-app.yml) */
-    private static final String RELEASE = "https://github.com/moongames0101-cmyk/jukebox-releases/releases/download/phone-app/";
+    private static final String RELEASE = Updater.RELEASE;
     private static final long CHECK_EVERY_MS = 6L * 60 * 60 * 1000;
     /** How long each address gets to answer before the app gives up on it */
     private static final int WIFI_WAIT_MS = 3000;
@@ -100,12 +100,17 @@ public class MainActivity extends Activity {
     private final Map<String, JSONObject> nearby = Collections.synchronizedMap(new HashMap<>());
     /** Each jukebox gets this long to answer "who are you?" during a search */
     private static final int HELLO_WAIT_MS = 900;
+    /** A new version, downloaded and waiting to install quietly once the app is left */
+    private File readyUpdate = null;
+    private long readyVersion = 0;
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        Updater.schedule(this);
+        sayIfUpdated();
 
         web = new WebView(this);
         web.setBackgroundColor(Color.parseColor("#0A0716"));
@@ -193,7 +198,53 @@ public class MainActivity extends Activity {
         if (now != null && now.startsWith(START) && now.contains("reason=offline")) openJukebox();
     }
 
-    // ── Updates: a newer build on GitHub → "Update VYBE Control?" → Android's installer
+    // ── Updates: a newer build on GitHub. Android 12 and newer: installed quietly once you leave the
+    //    app (Updater). Otherwise, or if Android wants a tap: "Update VYBE Control?" → Android's installer
+
+    /** Installing closes the app, so it waits a moment: the QR scanner or the share screen are only a quick trip away */
+    private static final long INSTALL_AFTER_LEAVING_MS = 15000;
+    private final Runnable installIfAway = () -> {
+        if (!Updater.onScreen) installReadyUpdate();
+    };
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Updater.onScreen = true;
+        ui.removeCallbacks(installIfAway); // back already: not now
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        Updater.onScreen = false;
+        if (!isChangingConfigurations() && readyUpdate != null) ui.postDelayed(installIfAway, INSTALL_AFTER_LEAVING_MS);
+    }
+
+    /** Left the app (or the screen went off): install the waiting update now. Android closes the app to do it. */
+    private void installReadyUpdate() {
+        final File file = readyUpdate;
+        final long version = readyVersion;
+        if (file == null) return;
+        readyUpdate = null;
+        final android.content.Context app = getApplicationContext();
+        new Thread(() -> Updater.install(app, file, version)).start();
+    }
+
+    /** "VYBE Control updated" the first time a new version opens */
+    private void sayIfUpdated() {
+        long ran = prefs.getLong("ranVersion", 0), mine = myVersion();
+        if (mine == Long.MAX_VALUE || mine == ran) return;
+        prefs.edit().putLong("ranVersion", mine).apply();
+        if (ran > 0 && mine > ran) {
+            String name = "";
+            try {
+                name = " to " + getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            } catch (Exception ignored) {
+            }
+            Toast.makeText(this, "VYBE Control updated" + name, Toast.LENGTH_SHORT).show();
+        }
+    }
 
     private long myVersion() {
         try {
@@ -205,23 +256,7 @@ public class MainActivity extends Activity {
     }
 
     private static byte[] download(String address, int limit) throws Exception {
-        HttpURLConnection c = (HttpURLConnection) new URL(address).openConnection();
-        c.setInstanceFollowRedirects(true);
-        c.setUseCaches(false);
-        c.setConnectTimeout(15000);
-        c.setReadTimeout(30000);
-        try (InputStream in = c.getInputStream(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            if (c.getResponseCode() != 200) throw new Exception("HTTP " + c.getResponseCode());
-            byte[] buf = new byte[16384];
-            int n;
-            while ((n = in.read(buf)) > 0) {
-                out.write(buf, 0, n);
-                if (out.size() > limit) throw new Exception("too big");
-            }
-            return out.toByteArray();
-        } finally {
-            c.disconnect();
-        }
+        return Updater.download(address, limit);
     }
 
     private void checkForUpdate(boolean now) {
@@ -230,9 +265,22 @@ public class MainActivity extends Activity {
         prefs.edit().putLong("updateChecked", System.currentTimeMillis()).apply();
         new Thread(() -> {
             try {
-                JSONObject info = new JSONObject(new String(download(RELEASE + "version.json", 64 * 1024), "UTF-8"));
-                long latest = info.optLong("versionCode", 0);
-                if (latest > myVersion()) runOnUiThread(() -> offerUpdate(latest));
+                long latest = Updater.latest();
+                UpdatePlan.Step step = Updater.plan(this, latest, true);
+                if (step == UpdatePlan.Step.ASK) {
+                    runOnUiThread(() -> offerUpdate(latest));
+                } else if (step == UpdatePlan.Step.INSTALL_WHEN_LEFT) {
+                    File file = Updater.fetch(this, latest);
+                    if (file == null) {
+                        prefs.edit().putLong("updateChecked", 0).apply(); // didn't download: try again next time
+                        return;
+                    }
+                    runOnUiThread(() -> {
+                        readyUpdate = file;
+                        readyVersion = latest;
+                        if (!Updater.onScreen) ui.postDelayed(installIfAway, INSTALL_AFTER_LEAVING_MS); // left while it downloaded
+                    });
+                }
             } catch (Exception ignored) {
                 // No internet or nothing published yet: try again next time
             }
@@ -244,16 +292,17 @@ public class MainActivity extends Activity {
         new AlertDialog.Builder(this)
                 .setTitle("Update VYBE Control?")
                 .setMessage("A new version of the app is ready. It only takes a few seconds.")
-                .setPositiveButton("Update", (d, w) -> startUpdate())
+                .setPositiveButton("Update", (d, w) -> startUpdate(version))
                 .setNegativeButton("Later", (d, w) -> prefs.edit().putLong("skipped", version).apply())
                 .show();
     }
 
-    private void startUpdate() {
-        // The first time, Android asks you to let VYBE Control install updates
+    private void startUpdate(long version) {
+        // The first time, Android asks you to let VYBE Control install updates (after that, on
+        // Android 12 and newer, it updates by itself)
         if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
             Toast.makeText(this, "Allow VYBE Control to install updates, then come back to the app", Toast.LENGTH_LONG).show();
-            prefs.edit().putLong("updateChecked", 0).apply(); // ask again when they're back
+            Updater.askNextTime(this, version); // this one: ask again when they're back, as they're waiting for it
             startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName())));
             return;
         }

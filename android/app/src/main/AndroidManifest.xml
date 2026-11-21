@@ -4,8 +4,12 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- Installing its own updates (Android asks you to tap Update each time) -->
+    <!-- Installing its own updates: quietly on Android 12 and newer (once "Install unknown apps" is
+         allowed for it), otherwise Android asks you to tap Update -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
+    <!-- The twice-a-day update check carries on after the phone restarts -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:label="VYBE Control"
@@ -47,6 +51,15 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/update_paths" />
         </provider>
+
+        <!-- The twice-a-day update check, and how each quiet update went -->
+        <service
+            android:name=".UpdateJob"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="false" />
+        <receiver
+            android:name=".UpdateDone"
+            android:exported="false" />
 
         <!-- Get Google's QR scanner ready when the app is installed, so the first scan opens straight away -->
         <meta-data
