@@ -1,0 +1,33 @@
+# Temporary: checks Gel's free-gel-files.ps1 on Windows. Only runs on the gel-update-fix branch.
+name: Gel update debug
+on:
+  push:
+    branches: [gel-update-fix]
+jobs:
+  script:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Run the script against a held file
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:LOCALAPPDATA 'Programs\gel-test'
+          New-Item -ItemType Directory -Force "$dir\resources\app" | Out-Null
+          Set-Content "$dir\resources\app.asar" 'x'; Set-Content "$dir\resources\app\main.js" 'y'; Set-Content "$dir\Gel.exe" 'z'
+          $hold = "`$a = [IO.File]::Open('$dir\resources\app.asar', 'Open', 'Read', 'ReadWrite'); Start-Sleep 300"
+          $holder = Start-Process powershell -PassThru -WindowStyle Hidden -ArgumentList '-NoProfile', '-Command', $hold
+          Start-Sleep 4
+          "holder $($holder.Id) running: $(-not $holder.HasExited)"
+          try { Rename-Item "$dir\resources\app.asar" "$dir\resources\moved.asar" -ErrorAction Stop; "rename WORKED while held (unexpected)" } catch { "rename blocked while held: $($_.Exception.Message)" }
+          & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File gel/build/free-gel-files.ps1 -Path $dir 2>&1 | ForEach-Object { "script: $_" }
+          "script exit: $LASTEXITCODE"
+          Start-Sleep 1
+          "holder running after script: $(-not $holder.HasExited)"
+          try { Rename-Item "$dir\resources\app.asar" "$dir\resources\moved.asar" -ErrorAction Stop; "rename works after script" } catch { "rename still blocked: $($_.Exception.Message)" }
+      - name: Show Add-Type errors, if any
+        shell: powershell
+        run: |
+          $src = Get-Content gel/build/free-gel-files.ps1 -Raw
+          $start = $src.IndexOf("@'") + 2; $end = $src.IndexOf("'@")
+          $cs = $src.Substring($start, $end - $start)
+          try { Add-Type -Language CSharp -TypeDefinition $cs -ErrorAction Stop; "Add-Type OK"; [GelRestartManager]::Users(@("$env:SystemRoot\System32\kernel32.dll")) } catch { "Add-Type failed: $_" }
