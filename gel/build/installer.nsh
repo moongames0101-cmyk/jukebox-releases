@@ -8,8 +8,14 @@
   InitPluginsDir
   SetOutPath "$PLUGINSDIR"
   File "${BUILD_RESOURCES_DIR}\free-gel-files.ps1"
+  ; The installer is a 32-bit program, and 32-bit PowerShell can't see which 64-bit programs
+  ; have files open, so use the 64-bit one through Sysnative when Windows has it.
+  StrCpy $2 "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe"
+  ${if} ${FileExists} "$WINDIR\Sysnative\WindowsPowerShell\v1.0\powershell.exe"
+    StrCpy $2 "$WINDIR\Sysnative\WindowsPowerShell\v1.0\powershell.exe"
+  ${endif}
   ${if} ${FileExists} "$INSTDIR\*.*"
-    nsExec::ExecToLog `"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\free-gel-files.ps1" -Path "$INSTDIR" ${FLAGS}`
+    nsExec::ExecToLog `"$2" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\free-gel-files.ps1" -Path "$INSTDIR" ${FLAGS}`
     Pop $1
   ${endif}
 !macroend

@@ -37,30 +37,40 @@ public static class GelRestartManager {
   [DllImport("rstrtmgr.dll", CharSet = CharSet.Unicode)] static extern int RmRegisterResources(uint handle, uint nFiles, string[] files, uint nApps, RM_UNIQUE_PROCESS[] apps, uint nServices, string[] services);
   [DllImport("rstrtmgr.dll")] static extern int RmGetList(uint handle, out uint needed, ref uint count, [In, Out] RM_PROCESS_INFO[] info, ref uint rebootReasons);
 
-  // Process ids of every program holding one of these files open.
+  public static int Failed;
+
+  // Process ids of every program holding one of these files open. Files are checked in small
+  // groups; if Windows turns a group down, its files are checked one at a time.
   public static int[] Users(string[] files) {
     var ids = new List<int>();
-    for (int start = 0; start < files.Length; start += 200) {
-      int n = Math.Min(200, files.Length - start);
+    Failed = 0;
+    for (int start = 0; start < files.Length; start += 50) {
+      int n = Math.Min(50, files.Length - start);
       string[] batch = new string[n];
       Array.Copy(files, start, batch, 0, n);
-      uint handle;
-      var key = new System.Text.StringBuilder(Guid.NewGuid().ToString());
-      if (RmStartSession(out handle, 0, key) != 0) continue;
-      try {
-        if (RmRegisterResources(handle, (uint)n, batch, 0, null, 0, null) != 0) continue;
-        uint needed = 0, count = 0, reasons = 0;
-        int res = RmGetList(handle, out needed, ref count, null, ref reasons);
-        if (res == 234 && needed > 0) { // ERROR_MORE_DATA: now we know how many
-          var info = new RM_PROCESS_INFO[needed];
-          count = needed;
-          if (RmGetList(handle, out needed, ref count, info, ref reasons) == 0) {
-            for (int i = 0; i < count; i++) if (!ids.Contains(info[i].Process.dwProcessId)) ids.Add(info[i].Process.dwProcessId);
-          }
-        }
-      } finally { RmEndSession(handle); }
+      if (!Check(batch, ids)) {
+        foreach (string f in batch) if (!Check(new string[] { f }, ids)) Failed++;
+      }
     }
     return ids.ToArray();
+  }
+
+  static bool Check(string[] files, List<int> ids) {
+    uint handle;
+    var key = new System.Text.StringBuilder(Guid.NewGuid().ToString());
+    if (RmStartSession(out handle, 0, key) != 0) return false;
+    try {
+      if (RmRegisterResources(handle, (uint)files.Length, files, 0, null, 0, null) != 0) return false;
+      uint needed = 0, count = 0, reasons = 0;
+      int res = RmGetList(handle, out needed, ref count, null, ref reasons);
+      if (res == 0) return true; // nobody is using them
+      if (res != 234 || needed == 0) return false;
+      var info = new RM_PROCESS_INFO[needed];
+      count = needed;
+      if (RmGetList(handle, out needed, ref count, info, ref reasons) != 0) return false;
+      for (int i = 0; i < count; i++) if (!ids.Contains(info[i].Process.dwProcessId)) ids.Add(info[i].Process.dwProcessId);
+      return true;
+    } finally { RmEndSession(handle); }
   }
 }
 '@
@@ -76,7 +86,9 @@ Get-Process | Where-Object { $_.Path -and $_.Path.StartsWith($Path + '\', [Strin
 # Programs that have one of Gel's files open (for example another app that opened app.asar).
 $files = @(Get-ChildItem -LiteralPath $Path -Recurse -File -Force | ForEach-Object { $_.FullName })
 if ($files.Count -gt 0) {
-  foreach ($id in [GelRestartManager]::Users($files)) {
+  $users = @([GelRestartManager]::Users($files))
+  Note ("Checked {0} files ({1}-bit PowerShell): {2} program(s) using them{3}" -f $files.Count, ([IntPtr]::Size * 8), $users.Count, $(if ([GelRestartManager]::Failed) { ", $([GelRestartManager]::Failed) files couldn't be checked" } else { '' }))
+  foreach ($id in $users) {
     $p = Get-Process -Id $id
     if ($p) { $targets[$p.Id] = $p }
   }
