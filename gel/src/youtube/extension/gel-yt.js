@@ -7,7 +7,7 @@
   if (W.__gelYtLoaded) return;
   W.__gelYtLoaded = true;
 
-  var Core = W.GelYtCore, Fx = W.GelYtFx;
+  var Core = W.GelYtCore, Fx = W.GelYtFx, Ads = W.GelYtAds;
   var isTop = W.top === W;
   var frame = /^\/live_chat/.test(location.pathname) ? 'chat' : 'top';
   if (!isTop && frame !== 'chat') return; // embeds and other frames stay as they are
@@ -26,7 +26,7 @@
   var CACHE_KEY = 'gel-yt-cache-v1';
   var S = {
     raw: null, theme: null, vars: {}, varCss: '', sheetsKey: '', addedDark: false,
-    fx: null, fxKey: '', fxHeld: null, playing: false, fonts: {}, blobs: {}, darkFixes: 0,
+    fx: null, fxKey: '', fxHeld: null, playing: false, fonts: {}, blobs: {}, darkFixes: 0, ads: null,
   };
 
   // ---------- Small helpers ----------
@@ -231,7 +231,13 @@
     if (S.addedDark) { H.removeAttribute('dark'); S.addedDark = false; }
     H.removeAttribute('gel-yt');
     S.varCss = '';
-    try { localStorage.removeItem(CACHE_KEY); } catch (e) { /* storage blocked */ }
+  }
+
+  // Ad skipping is its own switch: it stays on when the theme is off.
+  function setAds(on) {
+    if (!isTop || !Ads) return;
+    if (on && !S.ads) S.ads = Ads.start(D);
+    else if (!on && S.ads) { S.ads.stop(); S.ads = null; }
   }
   function saveCache() {
     try { localStorage.setItem(CACHE_KEY, JSON.stringify({ raw: S.raw, vars: S.varCss })); } catch (e) { /* storage blocked */ }
@@ -241,7 +247,10 @@
     S.raw = raw;
     var theme = null;
     try { theme = raw ? JSON.parse(raw) : null; } catch (e) { return; } // half-written file: try again next time
-    if (theme && theme.enabled) { apply(theme); saveCache(); } else off();
+    setAds(!!(theme && theme.adblock));
+    if (theme && theme.enabled) apply(theme); else if (S.theme || D.getElementById('gel-yt-page')) off();
+    if (theme && (theme.enabled || theme.adblock)) saveCache();
+    else { try { localStorage.removeItem(CACHE_KEY); } catch (e) { /* storage blocked */ } }
   }
 
   // ---------- Keeping up with YouTube and with Gel ----------

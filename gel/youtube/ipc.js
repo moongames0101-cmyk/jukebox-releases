@@ -3,7 +3,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { writeExtension, turnOff, readStatus, clearReloadFlag, pictureType } = require('./writer');
+const { writeExtension, turnOff, setAdblock, readStatus, clearReloadFlag, pictureType } = require('./writer');
 
 const MB = 1024 * 1024;
 const KINDS = ['logo', 'background'];
@@ -51,6 +51,23 @@ function registerYoutube({ ipcMain, app, shell, appDir, appData = process.env.AP
   const extDir = path.join(app.getPath('documents'), 'Gel', 'YouTube extension');
   const dataDir = path.join(app.getPath('userData'), 'youtube');
   const lastPath = path.join(dataDir, 'last-applied.json');
+  const settingsPath = path.join(dataDir, 'settings.json');
+
+  // Settings that belong to Gel for YouTube as a whole, not to one theme. Ads are skipped unless you say no.
+  function settings() {
+    let s = {};
+    try { s = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) || {}; } catch (e) { /* defaults */ }
+    return { adblock: s.adblock !== false };
+  }
+  function saveSettings(patch) {
+    fs.mkdirSync(dataDir, { recursive: true });
+    fs.writeFileSync(settingsPath, JSON.stringify(Object.assign(settings(), patch)));
+  }
+  // Writes the extension's code with the theme off, for when there's nothing to apply yet.
+  function writeIdle() {
+    writeExtension({ srcDir, outDir: extDir, theme: Themes.buildTheme(Themes.THEMES[0]) });
+    turnOff(extDir, settings());
+  }
 
   function picturePath(kind) {
     if (!KINDS.includes(kind) || !fs.existsSync(dataDir)) return null;
@@ -63,7 +80,7 @@ function registerYoutube({ ipcMain, app, shell, appDir, appData = process.env.AP
   }
 
   function status() {
-    return Object.assign(readStatus(extDir), { dir: extDir, themes: Themes.THEMES.length, browsers: browsersWith(extDir, { appData, localAppData }) });
+    return Object.assign(readStatus(extDir), { dir: extDir, themes: Themes.THEMES.length, browsers: browsersWith(extDir, { appData, localAppData }), adblock: settings().adblock });
   }
 
   // Builds the theme in the main process too, so what lands in the extension is always checked.
@@ -79,7 +96,7 @@ function registerYoutube({ ipcMain, app, shell, appDir, appData = process.env.AP
 
   function write(payload) {
     const parts = build(payload);
-    const res = writeExtension(Object.assign({ srcDir, outDir: extDir }, parts));
+    const res = writeExtension(Object.assign({ srcDir, outDir: extDir, adblock: settings().adblock }, parts));
     fs.mkdirSync(dataDir, { recursive: true });
     fs.writeFileSync(lastPath, JSON.stringify({ presetId: payload.presetId, custom: payload.custom || {} }));
     return res;
@@ -102,7 +119,7 @@ function registerYoutube({ ipcMain, app, shell, appDir, appData = process.env.AP
 
   ipcMain.handle('youtube:off', () => {
     try {
-      turnOff(extDir);
+      turnOff(extDir, settings());
       try { fs.rmSync(lastPath, { force: true }); } catch (e) { /* fine */ }
       return { ok: true, message: 'YouTube is back to normal. Pick a theme and press Apply any time.', status: status() };
     } catch (err) {
@@ -112,10 +129,7 @@ function registerYoutube({ ipcMain, app, shell, appDir, appData = process.env.AP
 
   ipcMain.handle('youtube:open-folder', async () => {
     try {
-      if (!fs.existsSync(path.join(extDir, 'manifest.json'))) {
-        writeExtension({ srcDir, outDir: extDir, theme: Themes.buildTheme(Themes.THEMES[0]) });
-        turnOff(extDir); // the folder is ready, but nothing changes until you press Apply
-      }
+      if (!fs.existsSync(path.join(extDir, 'manifest.json'))) writeIdle(); // ready, but no theme until you press Apply
       const err = await shell.openPath(extDir);
       return err ? { ok: false, message: err } : { ok: true };
     } catch (err) {
@@ -154,6 +168,17 @@ function registerYoutube({ ipcMain, app, shell, appDir, appData = process.env.AP
     return { ok: true };
   });
 
+  ipcMain.handle('youtube:set-adblock', (_e, on) => {
+    try {
+      saveSettings({ adblock: !!on });
+      if (fs.existsSync(path.join(extDir, 'manifest.json'))) setAdblock(extDir, !!on);
+      else writeIdle();
+      return { ok: true, status: status() };
+    } catch (err) {
+      return { ok: false, message: err.message, status: status() };
+    }
+  });
+
   ipcMain.handle('youtube:ack-reload', () => { clearReloadFlag(extDir); return { ok: true, status: status() }; });
 
   ipcMain.handle('youtube:open-youtube', () => shell.openExternal('https://www.youtube.com/'));
@@ -166,10 +191,7 @@ function registerYoutube({ ipcMain, app, shell, appDir, appData = process.env.AP
       let last = null;
       try { last = JSON.parse(fs.readFileSync(lastPath, 'utf8')); } catch (e) { /* none */ }
       if (s.enabled && last) write(last);
-      else {
-        writeExtension({ srcDir, outDir: extDir, theme: Themes.buildTheme(Themes.THEMES[0]) });
-        turnOff(extDir);
-      }
+      else writeIdle();
     } catch (err) {
       console.error('Gel for YouTube refresh failed:', err);
     }

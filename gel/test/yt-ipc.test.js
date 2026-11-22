@@ -145,3 +145,32 @@ test('status says which browsers have the extension added', async () => {
   s = await call('youtube:status');
   assert.deepEqual(s.browsers, ['Opera']);
 });
+
+test('ad skipping is on unless you turn it off', async () => {
+  assert.equal((await call('youtube:status')).adblock, true);
+  await call('youtube:apply', { presetId: 'sakura', custom: {} });
+  assert.equal(readTheme().adblock, true);
+});
+
+test('the ad switch takes effect straight away, theme or no theme', async () => {
+  await call('youtube:apply', { presetId: 'sakura', custom: {} });
+  let res = await call('youtube:set-adblock', false);
+  assert.equal(res.ok, true);
+  assert.equal(readTheme().adblock, false);
+  assert.equal(readTheme().name, 'Sakura Dream');
+  assert.equal(res.status.adblock, false);
+  await call('youtube:off');
+  res = await call('youtube:set-adblock', true);
+  assert.equal(readTheme().adblock, true);
+  assert.equal(readTheme().enabled, false);
+  await call('youtube:apply', { presetId: 'galaxy', custom: {} });
+  assert.equal(readTheme().adblock, true);
+});
+
+test('turning ads on before the extension exists makes it, with the theme off', async () => {
+  const res = await call('youtube:set-adblock', true);
+  assert.equal(res.ok, true);
+  assert.equal(readTheme().enabled, false);
+  assert.equal(readTheme().adblock, true);
+  assert.equal(res.status.installed, true);
+});

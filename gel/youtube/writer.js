@@ -11,6 +11,8 @@ const CODE = {
   'manifest.json': 'youtube/extension/manifest.json',
   'fx-engine.js': 'youtube/fx-engine.js',
   'yt-core.js': 'youtube/extension/yt-core.js',
+  'gel-ads.js': 'youtube/extension/gel-ads.js',
+  'gel-ads-main.js': 'youtube/extension/gel-ads-main.js',
   'gel-yt.js': 'youtube/extension/gel-yt.js',
 };
 const STATIC = {
@@ -86,7 +88,8 @@ function emblemSvg(glyph, color) {
 }
 
 // theme: from GelYtThemes.buildTheme. logoPicture / backgroundPicture: Buffers of your own pictures.
-function writeExtension({ srcDir, outDir, theme, logoPicture = null, backgroundPicture = null }) {
+// adblock: whether the extension skips and hides ads.
+function writeExtension({ srcDir, outDir, theme, logoPicture = null, backgroundPicture = null, adblock = false }) {
   if (!theme || !theme.palette) throw new Error('No theme to write.');
   fs.mkdirSync(outDir, { recursive: true });
 
@@ -133,6 +136,7 @@ function writeExtension({ srcDir, outDir, theme, logoPicture = null, backgroundP
   }
   t.logo = logo;
   t.enabled = true;
+  t.adblock = !!adblock;
   t.writtenAt = Date.now();
 
   const mediaDir = path.join(outDir, 'media');
@@ -143,9 +147,19 @@ function writeExtension({ srcDir, outDir, theme, logoPicture = null, backgroundP
   return { dir: outDir, codeUpdated, theme: t };
 }
 
-function turnOff(outDir) {
+function turnOff(outDir, { adblock = false } = {}) {
   if (!fs.existsSync(outDir)) return;
-  writeAtomic(path.join(outDir, 'theme.json'), JSON.stringify({ enabled: false, writtenAt: Date.now() }));
+  writeAtomic(path.join(outDir, 'theme.json'), JSON.stringify({ enabled: false, adblock: !!adblock, writtenAt: Date.now() }));
+}
+
+// Changes only the ad switch, keeping whatever theme is on.
+function setAdblock(outDir, adblock) {
+  let t = null;
+  try { t = JSON.parse(fs.readFileSync(path.join(outDir, 'theme.json'), 'utf8')); } catch (e) { /* none yet */ }
+  if (!t || typeof t !== 'object') t = { enabled: false };
+  t.adblock = !!adblock;
+  t.writtenAt = Date.now();
+  writeAtomic(path.join(outDir, 'theme.json'), JSON.stringify(t, null, 1));
 }
 
 function readStatus(outDir) {
@@ -163,4 +177,4 @@ function readStatus(outDir) {
 
 function clearReloadFlag(outDir) { fs.rmSync(path.join(outDir, RELOAD_FLAG), { force: true }); }
 
-module.exports = { writeExtension, turnOff, readStatus, clearReloadFlag, pictureType, EXT_FILES };
+module.exports = { writeExtension, turnOff, setAdblock, readStatus, clearReloadFlag, pictureType, EXT_FILES };

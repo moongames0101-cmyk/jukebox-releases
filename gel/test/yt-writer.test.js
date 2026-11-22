@@ -18,7 +18,7 @@ test('writes a complete extension Opera can load', () => {
   for (const f of EXT_FILES) assert.ok(fs.existsSync(path.join(out, f)), f);
   const manifest = JSON.parse(fs.readFileSync(path.join(out, 'manifest.json'), 'utf8'));
   assert.equal(manifest.manifest_version, 3);
-  for (const js of manifest.content_scripts[0].js) assert.ok(fs.existsSync(path.join(out, js)), js);
+  for (const c of manifest.content_scripts) for (const js of c.js) assert.ok(fs.existsSync(path.join(out, js)), js);
   for (const ic of Object.values(manifest.icons)) assert.ok(fs.existsSync(path.join(out, ic)), ic);
   assert.ok(fs.existsSync(path.join(out, 'fonts', 'outfit.woff2')));
   assert.ok(fs.existsSync(path.join(out, 'fonts', 'pixel.ttf')));
@@ -89,7 +89,7 @@ test('readStatus reports what is in the folder', () => {
   assert.equal(s.installed, true);
   assert.equal(s.enabled, true);
   assert.equal(s.name, 'Sakura Dream');
-  assert.equal(s.version, '1.0.0');
+  assert.equal(s.version, '1.1.0');
 });
 
 test('readStatus notices when the extension code changed and Opera needs to reload it', () => {
@@ -104,4 +104,35 @@ test('theme.json is replaced in one go, never half-written', () => {
   writeExtension({ srcDir, outDir: out, theme: buildTheme(THEMES[0]) });
   const leftovers = fs.readdirSync(out).filter((f) => f.endsWith('.tmp'));
   assert.deepEqual(leftovers, []);
+});
+
+test('the ad switch is written into theme.json', () => {
+  writeExtension({ srcDir, outDir: out, theme: buildTheme(THEMES[0]), adblock: true });
+  assert.equal(JSON.parse(fs.readFileSync(path.join(out, 'theme.json'), 'utf8')).adblock, true);
+  writeExtension({ srcDir, outDir: out, theme: buildTheme(THEMES[0]), adblock: false });
+  assert.equal(JSON.parse(fs.readFileSync(path.join(out, 'theme.json'), 'utf8')).adblock, false);
+});
+
+test('ads stay skipped when the theme is turned off', () => {
+  writeExtension({ srcDir, outDir: out, theme: buildTheme(THEMES[0]), adblock: true });
+  turnOff(out, { adblock: true });
+  const th = JSON.parse(fs.readFileSync(path.join(out, 'theme.json'), 'utf8'));
+  assert.equal(th.enabled, false);
+  assert.equal(th.adblock, true);
+});
+
+test('the ad stripper runs inside the page as it starts', () => {
+  writeExtension({ srcDir, outDir: out, theme: buildTheme(THEMES[0]) });
+  const cs = JSON.parse(fs.readFileSync(path.join(out, 'manifest.json'), 'utf8')).content_scripts;
+  const mainWorld = cs.find((c) => c.world === 'MAIN');
+  assert.deepEqual(mainWorld.js, ['gel-ads-main.js']);
+  assert.equal(mainWorld.run_at, 'document_start');
+  assert.ok(fs.existsSync(path.join(out, 'gel-ads-main.js')));
+});
+
+test('the extension loads the ad skipper before the theme script', () => {
+  writeExtension({ srcDir, outDir: out, theme: buildTheme(THEMES[0]) });
+  const js = JSON.parse(fs.readFileSync(path.join(out, 'manifest.json'), 'utf8')).content_scripts.find((c) => c.js.includes('gel-yt.js')).js;
+  assert.ok(js.indexOf('gel-ads.js') > -1 && js.indexOf('gel-ads.js') < js.indexOf('gel-yt.js'));
+  assert.ok(fs.existsSync(path.join(out, 'gel-ads.js')));
 });

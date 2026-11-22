@@ -68,6 +68,14 @@ Add it to your browser once:
 After that, every theme you apply shows up on YouTube within a couple of seconds, with no
 reload. The extension only runs on youtube.com and only reads files from its own folder.
 
+**Ad blocking** (on by default, switch in **YouTube → Layout**): the extension takes ads out of
+YouTube's video data before the player reads it, so video ads don't load, and it hides sponsored
+videos, banners and overlays. If an ad still gets through, it is muted, covered and skipped.
+Ads inside Shorts and sponsor segments that creators record into their videos aren't touched.
+Now and then YouTube makes a video wait a few seconds before starting, which is how it treats
+ad blockers. After a Gel update that changes the extension, press the reload arrow on
+**Gel for YouTube** in `opera://extensions` once.
+
 ## Developing
 
 ```

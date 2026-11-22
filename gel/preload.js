@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld('youtubeApi', {
   pictureData: kind => ipcRenderer.invoke('youtube:picture-data', kind),
   clearPicture: kind => ipcRenderer.invoke('youtube:clear-picture', kind),
   ackReload: () => ipcRenderer.invoke('youtube:ack-reload'),
+  setAdblock: on => ipcRenderer.invoke('youtube:set-adblock', on),
 });
 
 contextBridge.exposeInMainWorld('robloxApi', {
