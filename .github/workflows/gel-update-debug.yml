@@ -23,5 +23,9 @@ jobs:
           foreach ($f in @("$dir\resources\app.asar", "$dir\resources\app\main.js", "$dir\Gel.exe")) {
             try { Rename-Item $f "$f.moved" -ErrorAction Stop; Rename-Item "$f.moved" $f; "rename ok: $f" } catch { "rename blocked: $f" }
           }
-          & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File gel/build/free-gel-files.ps1 -Path $dir 2>&1 | ForEach-Object { "script: $_" }
+          # Start it the way the 32-bit installer does: from a 32-bit process, through Sysnative.
+          $script = (Resolve-Path gel/build/free-gel-files.ps1).Path
+          $inner = "& `"$env:WINDIR\Sysnative\WindowsPowerShell\v1.0\powershell.exe`" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$script`" -Path `"$dir`""
+          & "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "`"arch in 32-bit parent: `$env:PROCESSOR_ARCHITECTURE`"; $inner" 2>&1 | ForEach-Object { "script: $_" }
+          Get-Content (Join-Path $env:TEMP 'gel-update.log') -ErrorAction SilentlyContinue | ForEach-Object { "log: $_" }
           "holder alive after: $(-not $holder.HasExited)"

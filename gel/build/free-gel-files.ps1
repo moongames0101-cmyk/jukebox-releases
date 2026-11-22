@@ -12,7 +12,7 @@ Note ("Freeing Gel's files in $Path" + $(if ($Force) { ' (force)' } else { '' })
 if (-not (Test-Path -LiteralPath $Path)) { Note 'Gel is not installed there.'; exit 0 }
 $Path = (Resolve-Path -LiteralPath $Path).Path.TrimEnd('\')
 
-Add-Type -Language CSharp -TypeDefinition @'
+$cs = @'
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -74,6 +74,8 @@ public static class GelRestartManager {
   }
 }
 '@
+try { Add-Type -Language CSharp -TypeDefinition $cs -ErrorAction Stop }
+catch { Note ("Couldn't load Windows' Restart Manager: " + $_.Exception.Message) }
 
 # Windows itself and security software are never closed.
 $keep = @('explorer', 'svchost', 'System', 'Idle', 'csrss', 'wininit', 'winlogon', 'services', 'lsass', 'smss', 'dwm',
