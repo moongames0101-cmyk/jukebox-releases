@@ -66,7 +66,8 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $setup = (Resolve-Path dist/Gel-Setup.exe).Path
           $dir = Join-Path $env:LOCALAPPDATA 'Programs\gel'
-          $first = Start-Process $setup -ArgumentList '/S' -Wait -PassThru
+          $first = Start-Process $setup -ArgumentList '/S' -PassThru
+          if (-not $first.WaitForExit(180000)) { throw "the first install got stuck" }
           "first install exit code: $($first.ExitCode)"
           if (-not (Test-Path "$dir\Gel.exe")) { throw "the first install didn't happen" }
           Set-Content -Path "$dir\resources\app.asar" -Value 'an old archive'
@@ -74,7 +75,8 @@ jobs:
           $holder = Start-Process powershell -PassThru -WindowStyle Hidden -ArgumentList '-NoProfile', '-Command', $hold
           Start-Sleep 4
           if ($holder.HasExited) { throw "the test program didn't start holding the files" }
-          $update = Start-Process $setup -ArgumentList '/S', '--updated' -Wait -PassThru
+          $update = Start-Process $setup -ArgumentList '/S', '--updated' -PassThru
+          if (-not $update.WaitForExit(180000)) { Get-Content (Join-Path $env:TEMP 'gel-update.log') -ErrorAction SilentlyContinue | ForEach-Object { "log: $_" }; Stop-Process -Id $update.Id -Force; throw "the update got stuck" }
           "update exit code: $($update.ExitCode)"
           Get-Content (Join-Path $env:TEMP 'gel-update.log') -ErrorAction SilentlyContinue | ForEach-Object { "log: $_" }
           if ($update.ExitCode -ne 0) { throw "the update failed with code $($update.ExitCode)" }

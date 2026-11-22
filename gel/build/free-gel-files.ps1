@@ -83,12 +83,16 @@ if ($files.Count -gt 0) {
 }
 # Never close this script or whatever started it: Gel's installer or uninstaller, which keeps its
 # own log inside Gel's folder while it works.
+# (Windows reuses process ids, so a chain of parents can loop back on itself: stop after a few.)
+$all = @{}
+Get-CimInstance Win32_Process | ForEach-Object { $all[[int]$_.ProcessId] = [int]$_.ParentProcessId }
 $id = $PID
-while ($id) {
+$seen = @{}
+for ($i = 0; $i -lt 16 -and $id -and -not $seen.ContainsKey($id); $i++) {
+  $seen[$id] = $true
   $targets.Remove($id)
-  $parent = (Get-CimInstance Win32_Process -Filter "ProcessId=$id").ParentProcessId
-  if (-not $parent -or $parent -eq $id) { break }
-  $id = $parent
+  if (-not $all.ContainsKey($id)) { break }
+  $id = $all[$id]
 }
 foreach ($id in @($targets.Keys)) { if ($keep -contains $targets[$id].ProcessName) { $targets.Remove($id) } }
 if ($targets.Count -eq 0) { Note 'Nothing else is using Gel''s files.'; exit 0 }
