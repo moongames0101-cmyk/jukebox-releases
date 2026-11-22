@@ -54,7 +54,8 @@
       "artifactName": "Gel-Setup.exe",
       "differentialPackage": false,
       "runAfterFinish": true,
-      "deleteAppDataOnUninstall": false
+      "deleteAppDataOnUninstall": false,
+      "include": "build/installer.nsh"
     },
     "afterPack": "./scripts/after-pack.js",
     "publish": [
