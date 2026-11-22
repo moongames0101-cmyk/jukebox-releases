@@ -26,3 +26,31 @@ contextBridge.exposeInMainWorld('gelApi', {
     return () => ipcRenderer.removeListener('gel:log', handler);
   },
 });
+
+contextBridge.exposeInMainWorld('youtubeApi', {
+  status: () => ipcRenderer.invoke('youtube:status'),
+  apply: payload => ipcRenderer.invoke('youtube:apply', payload),
+  off: () => ipcRenderer.invoke('youtube:off'),
+  openFolder: () => ipcRenderer.invoke('youtube:open-folder'),
+  openYoutube: () => ipcRenderer.invoke('youtube:open-youtube'),
+  savePicture: payload => ipcRenderer.invoke('youtube:save-picture', payload),
+  pictureData: kind => ipcRenderer.invoke('youtube:picture-data', kind),
+  clearPicture: kind => ipcRenderer.invoke('youtube:clear-picture', kind),
+  ackReload: () => ipcRenderer.invoke('youtube:ack-reload'),
+});
+
+contextBridge.exposeInMainWorld('robloxApi', {
+  status: () => ipcRenderer.invoke('roblox:status'),
+  apply: payload => ipcRenderer.invoke('roblox:apply', payload),
+  restore: () => ipcRenderer.invoke('roblox:restore'),
+  assets: () => ipcRenderer.invoke('roblox:assets'),
+  saveAsset: payload => ipcRenderer.invoke('roblox:save-asset', payload),
+  assetData: id => ipcRenderer.invoke('roblox:asset-data', id),
+  deleteAsset: id => ipcRenderer.invoke('roblox:delete-asset', id),
+  openFolder: () => ipcRenderer.invoke('roblox:open-folder'),
+  onEvent: cb => {
+    const handler = (_e, msg) => cb(msg);
+    ipcRenderer.on('roblox:event', handler);
+    return () => ipcRenderer.removeListener('roblox:event', handler);
+  },
+});

@@ -143,15 +143,38 @@
   window.addEventListener('resize', placeInk);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(placeInk);
 
+  // Which app Gel is theming. Roblox tabs start with "rbx-" and live in roblox.js;
+  // YouTube tabs start with "yt-" and live in youtube.js.
+  const APPS = ['spotify', 'roblox', 'youtube'];
+  const appOf = tab => (String(tab).startsWith('rbx-') ? 'roblox' : String(tab).startsWith('yt-') ? 'youtube' : 'spotify');
+  const lastTab = { spotify: 'themes', roblox: 'rbx-themes', youtube: 'yt-themes' };
+  const SETUP_TAB = { spotify: 'setup', roblox: 'rbx-setup', youtube: 'yt-setup' };
+  let currentApp = APPS.includes(loadJSON('gel.v1.app', 'spotify')) ? loadJSON('gel.v1.app', 'spotify') : 'spotify';
+  document.body.dataset.app = currentApp;
+
   function showTab(name) {
+    if (appOf(name) !== currentApp) { setApp(appOf(name), name); return; }
+    lastTab[currentApp] = name;
     document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === name)));
     placeInk();
     document.querySelectorAll('.pane').forEach(p => { p.hidden = p.dataset.pane !== name; });
     $('.panel').scrollTop = 0;
     if (name === 'setup') refreshStatus();
   }
+
+  function setApp(name, tab) {
+    currentApp = APPS.includes(name) ? name : 'spotify';
+    document.body.dataset.app = currentApp;
+    document.querySelectorAll('.app-switch [data-app]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.app === currentApp)));
+    try { localStorage.setItem('gel.v1.app', JSON.stringify(currentApp)); } catch (_) { /* not important */ }
+    showTab(tab || lastTab[currentApp]);
+    if (currentApp === 'spotify') { renderPreview(); if (state.status) renderStatus(); }
+    window.dispatchEvent(new CustomEvent('gel:app', { detail: currentApp }));
+  }
+
   document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => showTab(t.dataset.tab)));
-  $('#statusPill').addEventListener('click', () => showTab('setup'));
+  document.querySelectorAll('.app-switch [data-app]').forEach(b => b.addEventListener('click', () => { if (b.dataset.app !== currentApp) setApp(b.dataset.app); }));
+  $('#statusPill').addEventListener('click', () => showTab(SETUP_TAB[currentApp]));
 
   // ---------- Preview ----------
   const loadedFonts = new Set();
@@ -817,6 +840,7 @@
 
   function renderStatus() {
     const s = state.status;
+    if (currentApp !== 'spotify') { renderSetupSteps(); return; } // roblox.js owns the pill then
     const pill = $('#statusPill');
     const text = $('#statusText');
     if (!s) { pill.dataset.state = 'missing'; text.textContent = "Couldn't check setup"; return; }
@@ -960,8 +984,11 @@
   renderColourList();
   renderAddons();
   renderAll();
-  placeInk();
+  setApp(currentApp);
   refreshStatus();
+
+  // ---------- Shared with the Roblox side (roblox.js) ----------
+  window.Gel.ui = { toast, react, escapeHtml, showTab, setApp, getApp: () => currentApp, placeInk, openLink: key => api.open(key), getSpotifyTheme: () => state.theme };
 
   // ---------- Browser stand-in (only used outside the desktop app) ----------
   function mockApi() {

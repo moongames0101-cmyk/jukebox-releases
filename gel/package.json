@@ -1,8 +1,8 @@
 {
   "name": "gel",
   "productName": "Gel",
-  "version": "1.0.0",
-  "description": "Design themes for Spotify and apply them with Spicetify",
+  "version": "1.3.0",
+  "description": "Design themes for Spotify, Roblox and YouTube",
   "main": "main.js",
   "author": "Gel",
   "license": "MIT",
@@ -24,6 +24,8 @@
       "main.js",
       "preload.js",
       "src/**/*",
+      "youtube/**/*",
+      "roblox/**/*",
       "build/icon.ico",
       "build/icon.png",
       "package.json"

@@ -4,6 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { autoUpdater } = require('electron-updater');
+const { registerRoblox } = require('./roblox/ipc');
+const { registerYoutube } = require('./youtube/ipc');
 
 const THEME_FOLDER = 'Gel';
 // Spicetify's own add-ons that Gel can switch on and off
@@ -315,6 +317,7 @@ const LINKS = {
   'spotify-download': 'https://www.spotify.com/download/',
   'apps-settings': 'ms-settings:appsfeatures',
   'spicetify-docs': 'https://spicetify.app/docs/getting-started',
+  'roblox-download': 'https://www.roblox.com/download',
 };
 
 ipcMain.handle('gel:open', async (_e, key) => {
@@ -357,6 +360,14 @@ ipcMain.handle('gel:import', async () => {
     return { ok: false, message: err.message || 'This file is not a Gel theme.' };
   }
 });
+
+// ---------- Roblox ----------
+// Fonts, cursors and death sounds for the Roblox Player. See roblox/ipc.js.
+const roblox = registerRoblox({ ipcMain, app, shell, getWin: () => win, appDir: __dirname });
+
+// ---------- YouTube ----------
+// The Gel for YouTube browser extension and its themes. See youtube/ipc.js.
+const youtube = registerYoutube({ ipcMain, app, shell, appDir: __dirname });
 
 // ---------- Updates ----------
 // Gel checks the "gel" release on GitHub, downloads new versions in the background
@@ -454,6 +465,8 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   createWindow();
   setupUpdates();
+  roblox.startWatching();
+  youtube.refresh();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 

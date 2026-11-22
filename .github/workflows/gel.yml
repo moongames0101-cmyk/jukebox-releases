@@ -1,9 +1,10 @@
-# Builds Gel, the Spotify theme app for Windows, and publishes it to the "gel" release.
+# Builds Gel, the theme app for Spotify, Roblox and YouTube on Windows, and publishes it to the "gel" release.
 #
 # Gel checks that release a few seconds after it opens (and every few hours), downloads
 # new versions in the background, and installs them when you restart it.
 #
-# - Every change to gel/ is built and published. The version is 1.0.<run number>.
+# - Every change to gel/ is built and published. The version is 1.3.<run number>, which is
+#   newer than every copy out there (1.0.x from before, and 1.3.0 put in by hand).
 # - Actions → "Gel (Windows app)" → Run workflow publishes the current code again.
 # - The gel release is a pre-release that is never marked "latest", so jukebox updates
 #   aren't affected, and this workflow never touches the jukebox or phone-app releases.
@@ -47,12 +48,12 @@ jobs:
         run: npm test
 
       - name: Build the installer
-        run: npx electron-builder --win nsis --x64 --publish never -c.extraMetadata.version=1.0.${{ github.run_number }}
+        run: npx electron-builder --win nsis --x64 --publish never -c.extraMetadata.version=1.3.${{ github.run_number }}
 
       - name: Check the update files
         run: |
           test -f dist/Gel-Setup.exe
-          grep -q "version: 1.0.${{ github.run_number }}" dist/latest.yml
+          grep -q "version: 1.3.${{ github.run_number }}" dist/latest.yml
           grep -q "Gel-Setup.exe" dist/latest.yml
           cat dist/latest.yml
 
@@ -65,10 +66,21 @@ jobs:
         if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
+          TITLE: Gel (themes for Spotify, Roblox and YouTube on Windows)
+          NOTES: |
+            Gel themes Spotify, Roblox and YouTube on Windows.
+
+            - Spotify: colours, fonts, animated backgrounds and layouts, applied with Spicetify.
+            - Roblox: your own font, cursor, death sound and an animated avatar background.
+            - YouTube: 19 animated themes and your own logo, through a small browser extension Gel makes for you (Opera, Chrome, Edge, Brave).
+
+            Download Gel-Setup.exe once. After that Gel updates itself from this release.
+            Windows may say "Windows protected your PC" because Gel isn't code-signed: choose More info, then Run anyway.
         run: |
           if ! gh release view gel >/dev/null 2>&1; then
-            gh release create gel --title "Gel (Spotify themes for Windows)" --prerelease --latest=false \
-              --notes "Gel designs Spotify themes and applies them with Spicetify. Download Gel-Setup.exe once; after that Gel updates itself from this release."
+            gh release create gel --title "$TITLE" --prerelease --latest=false --notes "$NOTES"
+          else
+            gh release edit gel --title "$TITLE" --notes "$NOTES"
           fi
           # The installer goes up first, then latest.yml, so Gel never sees a new version before its file is there.
           gh release upload gel dist/Gel-Setup.exe --clobber

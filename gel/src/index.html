@@ -2,7 +2,7 @@
 <html lang="en-GB">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'none'">
   <title>Gel</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -28,6 +28,12 @@
     <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 0c.6 6.6 5.4 11.4 12 12-6.6.6-11.4 5.4-12 12-.6-6.6-5.4-11.4-12-12C6.6 11.4 11.4 6.6 12 0z"/></symbol>
     <symbol id="i-min" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" d="M6 12h12"/></symbol>
     <symbol id="i-max" viewBox="0 0 24 24"><rect x="5.5" y="5.5" width="13" height="13" rx="3.5" fill="none" stroke="currentColor" stroke-width="2.2"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M9 17.5V6.2a1 1 0 0 1 .8-1l9-1.9a1 1 0 0 1 1.2 1v11.2a3 3 0 1 1-2-2.8V8.2l-7 1.5v7.8a3 3 0 1 1-2-2.8z"/></symbol>
+    <symbol id="i-yt" viewBox="0 0 24 24"><path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4a2.6 2.6 0 0 0-1.8 1.8C2 8.8 2 12 2 12s0 3.2.4 4.8a2.6 2.6 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.8c.4-1.6.4-4.8.4-4.8s0-3.2-.4-4.8zM10 15V9l5.2 3z"/></symbol>
+    <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 2.5 3.5 7v10L12 21.5 20.5 17V7zm0 2.3L18 8l-6 3.2L6 8zM5.5 9.6l5.5 3v6.3l-5.5-2.9zm7.5 9.3v-6.3l5.5-3v6.4z"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M5 7h14M5 12h14M5 17h14"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7l-5 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></symbol>
+    <symbol id="i-pointer" viewBox="0 0 24 24"><path d="M5 3v16l4.2-4 2.9 6.3 2.6-1.2-2.9-6.2H18z" stroke="#1A1033" stroke-width="1.2" stroke-linejoin="round"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M6 6l12 12M18 6 6 18"/></symbol>
   </svg>
 
@@ -40,14 +46,31 @@
         <span class="brand-name">Gel</span>
         <svg class="brand-spark" aria-hidden="true"><use href="#i-spark"/></svg>
       </div>
+      <div class="app-switch glass" role="radiogroup" aria-label="App to theme">
+        <button role="radio" data-app="spotify" aria-checked="true"><svg aria-hidden="true"><use href="#i-note"/></svg><span>Spotify</span></button>
+        <button role="radio" data-app="roblox" aria-checked="false"><svg aria-hidden="true"><use href="#i-cube"/></svg><span>Roblox</span></button>
+        <button role="radio" data-app="youtube" aria-checked="false"><svg aria-hidden="true"><use href="#i-yt"/></svg><span>YouTube</span></button>
+      </div>
       <nav class="tabs glass" role="tablist" aria-label="Sections">
         <span class="tab-ink" aria-hidden="true"></span>
-        <button class="tab" role="tab" data-tab="themes" aria-selected="true">Themes</button>
-        <button class="tab" role="tab" data-tab="colours" aria-selected="false">Colours</button>
-        <button class="tab" role="tab" data-tab="style" aria-selected="false">Style</button>
-        <button class="tab" role="tab" data-tab="layout" aria-selected="false">Layout</button>
-        <button class="tab" role="tab" data-tab="extras" aria-selected="false">Extras</button>
-        <button class="tab" role="tab" data-tab="setup" aria-selected="false">Setup</button>
+        <button class="tab" role="tab" data-tab="themes" data-only="spotify" aria-selected="true">Themes</button>
+        <button class="tab" role="tab" data-tab="colours" data-only="spotify" aria-selected="false">Colours</button>
+        <button class="tab" role="tab" data-tab="style" data-only="spotify" aria-selected="false">Style</button>
+        <button class="tab" role="tab" data-tab="layout" data-only="spotify" aria-selected="false">Layout</button>
+        <button class="tab" role="tab" data-tab="extras" data-only="spotify" aria-selected="false">Extras</button>
+        <button class="tab" role="tab" data-tab="setup" data-only="spotify" aria-selected="false">Setup</button>
+        <button class="tab" role="tab" data-tab="rbx-themes" data-only="roblox" aria-selected="false">Themes</button>
+        <button class="tab" role="tab" data-tab="rbx-font" data-only="roblox" aria-selected="false">Font</button>
+        <button class="tab" role="tab" data-tab="rbx-cursor" data-only="roblox" aria-selected="false">Cursor</button>
+        <button class="tab" role="tab" data-tab="rbx-sounds" data-only="roblox" aria-selected="false">Sounds</button>
+        <button class="tab" role="tab" data-tab="rbx-avatar" data-only="roblox" aria-selected="false">Avatar</button>
+        <button class="tab" role="tab" data-tab="rbx-setup" data-only="roblox" aria-selected="false">Setup</button>
+        <button class="tab" role="tab" data-tab="yt-themes" data-only="youtube" aria-selected="false">Themes</button>
+        <button class="tab" role="tab" data-tab="yt-colours" data-only="youtube" aria-selected="false">Colours</button>
+        <button class="tab" role="tab" data-tab="yt-style" data-only="youtube" aria-selected="false">Style</button>
+        <button class="tab" role="tab" data-tab="yt-layout" data-only="youtube" aria-selected="false">Layout</button>
+        <button class="tab" role="tab" data-tab="yt-logo" data-only="youtube" aria-selected="false">Logo</button>
+        <button class="tab" role="tab" data-tab="yt-setup" data-only="youtube" aria-selected="false">Setup</button>
       </nav>
       <div class="titlebar-right">
         <button class="update-chip" id="updateChip" hidden></button>
@@ -304,9 +327,231 @@
             </div>
           </div>
         </div>
+
+        <!-- ROBLOX: THEMES -->
+        <div class="pane" data-pane="rbx-themes" hidden>
+          <h2 class="pane-title">Pick a Roblox theme</h2>
+          <p class="pane-lede">Each theme sets a font, a cursor, a death sound and an animated avatar background. Try one in the preview. Nothing changes in Roblox until you press Apply.</p>
+          <div class="swatchbook" id="rbxPresets"></div>
+          <h3 class="section-title">My Roblox themes</h3>
+          <div class="swatchbook" id="rbxSaved"></div>
+          <div class="empty" id="rbxSavedEmpty"><span data-mascot="empty"></span><span>Themes you save show up here. Change anything, then press <strong>Save to My themes</strong>.</span></div>
+        </div>
+
+        <!-- ROBLOX: FONT -->
+        <div class="pane" data-pane="rbx-font" hidden>
+          <h2 class="pane-title">Font</h2>
+          <p class="pane-lede">Changes the text in Roblox's menus, chat and player list, and in games that use Roblox's own fonts.</p>
+          <div class="rbx-list" id="rbxFonts" role="radiogroup" aria-label="Font"></div>
+          <div class="row-actions">
+            <button class="btn ghost" id="rbxFontAdd">Use my own font…</button>
+            <input type="file" id="rbxFontInput" accept=".ttf,.otf" hidden>
+          </div>
+          <p class="help">Any .ttf or .otf font works. Roblox uses one font for every weight, so bold text looks a little lighter.</p>
+        </div>
+
+        <!-- ROBLOX: CURSOR -->
+        <div class="pane" data-pane="rbx-cursor" hidden>
+          <h2 class="pane-title">Cursor</h2>
+          <p class="pane-lede">Hover over the preview to try a cursor with your own mouse.</p>
+          <div class="rbx-tiles" id="rbxCursors" role="radiogroup" aria-label="Cursor"></div>
+          <div class="field rbx-own">
+            <span class="label">Your own picture points…</span>
+            <div class="segmented" role="radiogroup" aria-label="Where your picture points">
+              <button role="radio" data-cursor-fit="arrow" aria-checked="true">From the top-left, like an arrow</button>
+              <button role="radio" data-cursor-fit="centre" aria-checked="false">From the middle</button>
+            </div>
+            <div class="row-actions">
+              <button class="btn ghost" id="rbxCursorAdd">Use my own picture…</button>
+              <input type="file" id="rbxCursorInput" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+            </div>
+            <p class="help">Roblox clicks wherever the middle of the cursor picture is. Gel shrinks your picture to fit and lines it up so it clicks where it points.</p>
+          </div>
+        </div>
+
+        <!-- ROBLOX: SOUNDS -->
+        <div class="pane" data-pane="rbx-sounds" hidden>
+          <h2 class="pane-title">Death sound</h2>
+          <p class="pane-lede">What you hear when your character dies. Press play to listen.</p>
+          <div class="rbx-list" id="rbxSounds" role="radiogroup" aria-label="Death sound"></div>
+          <div class="row-actions">
+            <button class="btn ghost" id="rbxSoundAdd">Use my own sound…</button>
+            <input type="file" id="rbxSoundInput" accept=".ogg,audio/ogg" hidden>
+          </div>
+          <p class="help">Roblox only plays Ogg Vorbis sounds (.ogg). Short ones work best.</p>
+        </div>
+
+        <!-- ROBLOX: AVATAR BACKGROUND -->
+        <div class="pane" data-pane="rbx-avatar" hidden>
+          <h2 class="pane-title">Avatar background</h2>
+          <p class="pane-lede">An animated background behind your character on the Avatar page of the Roblox app. It moves with Roblox's own particle effects, so there are no scripts.</p>
+          <div class="swatchbook" id="rbxBackdrops" role="radiogroup" aria-label="Avatar background"></div>
+          <p class="help">If you wear a background you got from the Marketplace, Roblox may show that picture behind the animation instead of Gel's colours.</p>
+          <p class="help">This is new. If the Avatar page looks wrong, pick Roblox's own here and apply again, or press Back to normal Roblox.</p>
+        </div>
+
+        <!-- ROBLOX: SETUP -->
+        <div class="pane" data-pane="rbx-setup" hidden>
+          <h2 class="pane-title">Setup</h2>
+          <p class="pane-lede">Gel themes Roblox by swapping the font, cursor and sound files Roblox loads when it starts. It doesn't touch your account or the games you play.</p>
+          <ol class="steps" id="rbxSteps"></ol>
+          <div class="row-actions">
+            <button class="btn ghost" id="rbxRecheck">Check again</button>
+            <button class="btn ghost" id="rbxOpenFolder">Open my files folder</button>
+          </div>
+          <div class="about">
+            <h3 class="section-title">What Gel can change</h3>
+            <p class="help">The font, the cursor and the death sound. Menu colours are built into Roblox itself, so those stay as they are.</p>
+          </div>
+        </div>
+
+        <!-- YOUTUBE: THEMES -->
+        <div class="pane" data-pane="yt-themes" hidden>
+          <h2 class="pane-title">Pick a YouTube theme</h2>
+          <p class="pane-lede">Every theme has its own colours, fonts and moving background. Hover over one to see it move. Nothing changes on YouTube until you press Apply.</p>
+          <div class="swatchbook yt-book" id="ytPresets"></div>
+          <h3 class="group-title">My themes</h3>
+          <div class="swatchbook yt-book" id="ytSaved"></div>
+          <div class="empty" id="ytSavedEmpty"><span data-mascot="empty"></span><span>Themes you save show up here. Change anything, then press <strong>Save to My themes</strong>.</span></div>
+        </div>
+
+        <!-- YOUTUBE: COLOURS -->
+        <div class="pane" data-pane="yt-colours" hidden>
+          <h2 class="pane-title">Colours</h2>
+          <p class="pane-lede">Five colours paint the whole of YouTube. Gel works out the in-between shades and keeps text easy to read.</p>
+          <div class="seed-row yt-seeds">
+            <label class="seed"><span class="seed-swatch"><input type="color" data-yt-seed="bg"></span><span>Background</span></label>
+            <label class="seed"><span class="seed-swatch"><input type="color" data-yt-seed="text"></span><span>Text</span></label>
+            <label class="seed"><span class="seed-swatch"><input type="color" data-yt-seed="accent"></span><span>Accent</span></label>
+            <label class="seed"><span class="seed-swatch"><input type="color" data-yt-seed="accent2"></span><span>Second accent</span></label>
+            <label class="seed"><span class="seed-swatch"><input type="color" data-yt-seed="link"></span><span>Links</span></label>
+          </div>
+          <div id="ytContrast" class="note" hidden></div>
+          <div class="field">
+            <div class="row-actions">
+              <button class="btn ghost" id="ytMatchSpotify">Match my Spotify theme</button>
+              <button class="link" id="ytSeedReset">Back to the theme's colours</button>
+            </div>
+            <p class="help">The accent colours the progress bar, the Subscribe button and the selected filter. The second accent blends into the progress bar and the logo.</p>
+          </div>
+
+          <div class="field">
+            <label for="ytGlass">See-through <output id="ytGlassOut"></output></label>
+            <input type="range" id="ytGlass" min="0" max="0.85" step="0.05">
+            <p class="help">How much of the moving background shows through YouTube's pages and menus.</p>
+          </div>
+          <div class="field">
+            <label for="ytRadius">Rounded corners <output id="ytRadiusOut"></output></label>
+            <input type="range" id="ytRadius" min="0" max="24" step="1">
+          </div>
+        </div>
+
+        <!-- YOUTUBE: STYLE -->
+        <div class="pane" data-pane="yt-style" hidden>
+          <h2 class="pane-title">Style</h2>
+          <div class="field">
+            <label for="ytFont">Font</label>
+            <select id="ytFont"></select>
+            <p class="help">For video titles, menus and comments. The fonts come with the extension, so nothing downloads.</p>
+          </div>
+          <div class="field">
+            <label for="ytHeadingFont">Heading font</label>
+            <select id="ytHeadingFont"></select>
+            <p class="help">Big titles: the video you're watching, shelf names like Shorts, channel page names and your logo words.</p>
+          </div>
+          <div class="field">
+            <span class="label">Moving background</span>
+            <div class="yt-fx-grid" id="ytFxGrid" role="radiogroup" aria-label="Moving background"></div>
+            <div class="fx-controls" id="ytFxControls">
+              <label for="ytFxAmount">Amount <output id="ytFxAmountOut"></output></label>
+              <input type="range" id="ytFxAmount" min="0.2" max="2" step="0.1">
+              <label for="ytFxSpeed">Speed <output id="ytFxSpeedOut"></output></label>
+              <input type="range" id="ytFxSpeed" min="0.3" max="2.5" step="0.1">
+              <label class="switch"><input type="checkbox" id="ytFxMine"><span class="switch-track" aria-hidden="true"></span> Use my colours for it</label>
+            </div>
+            <p class="help">It pauses while a video plays and when the tab is hidden, so it won't slow your videos down.</p>
+          </div>
+          <div class="field">
+            <label class="switch"><input type="checkbox" id="ytPicOn"><span class="switch-track" aria-hidden="true"></span> Background picture</label>
+            <div class="logo-pic" id="ytPicWrap" hidden>
+              <span class="logo-thumb wide" id="ytPicThumb"></span>
+              <button class="btn ghost" id="ytPicChoose">Choose picture…</button>
+              <input type="file" id="ytPicInput" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+            </div>
+            <div class="fx-controls" id="ytDimWrap" hidden>
+              <label for="ytDim">Darken it <output id="ytDimOut"></output></label>
+              <input type="range" id="ytDim" min="0" max="0.9" step="0.05">
+            </div>
+            <p class="help">Sits behind the moving background. A busy picture is easier on the eyes darkened a little.</p>
+          </div>
+        </div>
+
+        <!-- YOUTUBE: LAYOUT -->
+        <div class="pane" data-pane="yt-layout" hidden>
+          <h2 class="pane-title">Layout</h2>
+          <p class="pane-lede">Small changes to how YouTube is laid out.</p>
+          <div class="field">
+            <span class="label">Videos per row on Home</span>
+            <div class="segmented" role="radiogroup" aria-label="Videos per row">
+              <button role="radio" data-yt-row="0" aria-checked="true">Auto</button>
+              <button role="radio" data-yt-row="3" aria-checked="false">3</button>
+              <button role="radio" data-yt-row="4" aria-checked="false">4</button>
+              <button role="radio" data-yt-row="5" aria-checked="false">5</button>
+              <button role="radio" data-yt-row="6" aria-checked="false">6</button>
+            </div>
+          </div>
+          <div class="toggles">
+            <label class="switch"><input type="checkbox" id="ytHideShorts"><span class="switch-track" aria-hidden="true"></span><span>Hide Shorts<small>Takes Shorts off Home, search and the side menu.</small></span></label>
+            <label class="switch"><input type="checkbox" id="ytHideAmbient"><span class="switch-track" aria-hidden="true"></span><span>Hide the glow around videos<small>YouTube's ambient glow fights with your theme's colours.</small></span></label>
+            <label class="switch"><input type="checkbox" id="ytAnimatePlaying"><span class="switch-track" aria-hidden="true"></span><span>Keep the background moving while a video plays<small>Off is kinder to older computers.</small></span></label>
+          </div>
+        </div>
+
+        <!-- YOUTUBE: LOGO -->
+        <div class="pane" data-pane="yt-logo" hidden>
+          <h2 class="pane-title">Logo</h2>
+          <p class="pane-lede">Swap the YouTube logo at the top left for your own. Clicking it still takes you to Home.</p>
+          <div class="field">
+            <div class="segmented" role="radiogroup" aria-label="Logo">
+              <button role="radio" data-yt-logo="keep" aria-checked="true">YouTube's</button>
+              <button role="radio" data-yt-logo="emblem" aria-checked="false">Emblem</button>
+              <button role="radio" data-yt-logo="picture" aria-checked="false">Picture</button>
+              <button role="radio" data-yt-logo="text" aria-checked="false">Words</button>
+              <button role="radio" data-yt-logo="hidden" aria-checked="false">Hidden</button>
+            </div>
+            <div class="glyph-grid" id="ytGlyphs" role="radiogroup" aria-label="Emblem" hidden></div>
+            <div class="logo-pic" id="ytLogoPicWrap" hidden>
+              <span class="logo-thumb" id="ytLogoThumb"></span>
+              <button class="btn ghost" id="ytLogoChoose">Choose picture…</button>
+              <input type="file" id="ytLogoInput" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+            </div>
+          </div>
+          <div class="field" id="ytLogoTextWrap" hidden>
+            <label for="ytLogoText" id="ytLogoTextLabel">Words</label>
+            <input type="text" id="ytLogoText" maxlength="24" spellcheck="false" placeholder="Your name or any word">
+            <p class="help" id="ytLogoTextHelp">Written in your heading font, in the theme's accent colours.</p>
+          </div>
+        </div>
+
+        <!-- YOUTUBE: SETUP -->
+        <div class="pane" data-pane="yt-setup" hidden>
+          <h2 class="pane-title">Setup</h2>
+          <p class="pane-lede">Gel themes YouTube through a small browser extension that Gel makes for you. It only works on youtube.com and doesn't touch your Google account.</p>
+          <ol class="steps" id="ytSteps"></ol>
+          <div class="row-actions">
+            <button class="btn ghost" id="ytRecheck">Check again</button>
+            <button class="btn ghost" id="ytOpenFolder">Open extension folder</button>
+            <button class="btn ghost" id="ytOpenYoutube">Open YouTube</button>
+          </div>
+          <div class="about">
+            <h3 class="section-title">Good to know</h3>
+            <p class="help">It works in Opera and in other browsers built on Chrome, like Opera GX, Chrome, Edge and Brave. Add it the same way in each one.</p>
+            <p class="help">Gel turns on YouTube's dark look underneath your theme. Turning the theme off puts YouTube back the way you had it.</p>
+          </div>
+        </div>
       </section>
 
-      <section class="stage reveal d2">
+      <section class="stage reveal d2" data-only="spotify">
         <div class="stage-head">
           <input class="theme-name" id="themeName" aria-label="Theme name" maxlength="40" spellcheck="false">
           <span class="contrast-badge" id="contrastBadge"></span>
@@ -396,23 +641,116 @@
           </div>
         </div>
       </section>
+
+      <section class="stage rbx-stage reveal d2" data-only="roblox">
+        <div class="stage-head">
+          <input class="theme-name" id="rbxName" aria-label="Theme name" maxlength="40" spellcheck="false">
+          <button class="contrast-badge rbx-play" id="rbxPlay"><svg aria-hidden="true"><use href="#i-volume"/></svg><span>Play death sound</span></button>
+        </div>
+        <div class="preview rbx-preview" id="rbxPreview">
+          <div class="r-frame">
+            <div class="r-sky"><span class="r-sun"></span><span class="r-cloud k1"></span><span class="r-cloud k2"></span><span class="r-cloud k3"></span></div>
+            <div class="r-world" aria-hidden="true">
+              <span class="r-hill h1"></span><span class="r-hill h2"></span><span class="r-hill h3"></span>
+              <span class="r-ground"></span>
+              <span class="r-block b1"></span><span class="r-block b2"></span><span class="r-block b3"></span><span class="r-block b4"></span>
+              <span class="r-tree t1"><i></i></span><span class="r-tree t2"><i></i></span><span class="r-tree t3"><i></i></span>
+              <span class="r-pad"></span>
+              <span class="r-chest"><i></i></span>
+            </div>
+            <div class="r-ui">
+              <div class="r-topleft">
+                <span class="r-btn"><svg><use href="#i-menu"/></svg></span>
+                <span class="r-btn"><svg><use href="#i-chat"/></svg></span>
+              </div>
+              <div class="r-chat">
+                <p><b class="n1">[Server]</b> Welcome to Obby Island!</p>
+                <p><b class="n2">mira_vale:</b> race you to the top</p>
+                <p><b class="n3">kaito_m:</b> gg, that jump was huge</p>
+                <p><b class="n4">you:</b> one more round?</p>
+                <span class="r-chat-input">Press / to chat</span>
+              </div>
+              <div class="r-players">
+                <div class="r-players-head"><span>Players</span><span>Coins</span></div>
+                <div><span>mira_vale</span><span>1,240</span></div>
+                <div class="me"><span>you</span><span>980</span></div>
+                <div><span>kaito_m</span><span>760</span></div>
+              </div>
+              <div class="r-hint"><kbd>E</kbd> Open chest</div>
+              <div class="r-died" id="rbxDied" hidden>Respawning…</div>
+            </div>
+            <div class="r-avatar" id="rbxAvatarStage" aria-hidden="true">
+              <div class="r-av-ribbons"></div>
+              <div class="r-av-particles"></div>
+              <span class="r-av-floor"></span>
+              <svg class="r-av-figure" viewBox="0 0 120 260"><circle cx="60" cy="34" r="26"/><rect x="28" y="66" width="64" height="92" rx="22"/><rect x="6" y="72" width="20" height="80" rx="10"/><rect x="94" y="72" width="20" height="80" rx="10"/><rect x="32" y="150" width="24" height="100" rx="11"/><rect x="64" y="150" width="24" height="100" rx="11"/></svg>
+              <span class="r-av-label" id="rbxAvatarLabel"></span>
+            </div>
+            <img class="r-cursor" id="rbxCursorGhost" alt="" hidden>
+            <span class="r-note">Preview. Menus keep Roblox's own colours.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="stage yt-stage reveal d2" data-only="youtube">
+        <div class="stage-head">
+          <input class="theme-name" id="ytName" aria-label="Theme name" maxlength="40" spellcheck="false">
+          <span class="contrast-badge" id="ytBadge"></span>
+        </div>
+        <div class="preview yt-preview" id="ytPreview">
+          <div class="y-frame">
+            <div class="y-bg" aria-hidden="true"><div class="y-pic" id="ytPrevPic"></div><div class="y-dim"></div><div class="y-glow"></div><canvas id="ytFx"></canvas><div class="y-veil"></div></div>
+            <div class="y-top">
+              <span class="y-burger"><svg><use href="#i-menu"/></svg></span>
+              <span class="y-logo" id="ytPrevLogo"></span>
+              <span class="y-search"><span>Search</span><i><svg><use href="#i-search"/></svg></i></span>
+              <span class="y-me"></span>
+            </div>
+            <div class="y-side">
+              <span class="on"><svg><use href="#i-home"/></svg>Home</span>
+              <span class="y-shorts-link"><svg><use href="#i-yt"/></svg>Shorts</span>
+              <span><svg><use href="#i-library"/></svg>Subscriptions</span>
+              <span><svg><use href="#i-people"/></svg>You</span>
+            </div>
+            <div class="y-main">
+              <div class="y-chips"><span class="on">All</span><span>Music</span><span>Gaming</span><span>Live</span><span>Mixes</span><span>Cats</span></div>
+              <div class="y-grid" id="ytPrevGrid"></div>
+              <div class="y-shelf" id="ytPrevShorts"><h4>Shorts</h4><div class="y-shorts"><i></i><i></i><i></i><i></i><i></i></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
 
-    <div class="log glass" id="log" hidden>
+    <div class="log glass" id="log" data-only="spotify" hidden>
       <div class="log-head"><span>Spicetify log</span><button class="link" id="logClose">Hide</button></div>
       <pre id="logBody"></pre>
     </div>
 
     <footer class="dock glass reveal d3">
-      <div class="actions-left">
+      <div class="actions-left" data-only="spotify">
         <button class="btn ghost" id="saveTheme">Save to My themes</button>
         <button class="btn ghost" id="exportTheme">Export…</button>
         <button class="btn ghost" id="importTheme">Import…</button>
         <button class="link" id="logToggle">Show log</button>
       </div>
-      <div class="actions-right">
+      <div class="actions-right" data-only="spotify">
         <button class="btn ghost" id="restoreSpotify">Back to normal Spotify</button>
         <button class="btn primary" id="applyTheme"><svg aria-hidden="true"><use href="#i-spark"/></svg><span class="btn-label">Apply to Spotify</span></button>
+      </div>
+      <div class="actions-left" data-only="roblox">
+        <button class="btn ghost" id="rbxSave">Save to My themes</button>
+      </div>
+      <div class="actions-right" data-only="roblox">
+        <button class="btn ghost" id="rbxRestore">Back to normal Roblox</button>
+        <button class="btn primary" id="rbxApply"><svg aria-hidden="true"><use href="#i-spark"/></svg><span class="btn-label">Apply to Roblox</span></button>
+      </div>
+      <div class="actions-left" data-only="youtube">
+        <button class="btn ghost" id="ytSave">Save to My themes</button>
+      </div>
+      <div class="actions-right" data-only="youtube">
+        <button class="btn ghost" id="ytOff">Back to normal YouTube</button>
+        <button class="btn primary" id="ytApply"><svg aria-hidden="true"><use href="#i-spark"/></svg><span class="btn-label">Apply to YouTube</span></button>
       </div>
     </footer>
 
@@ -427,5 +765,9 @@
   <script src="lib/presets.js"></script>
   <script src="palette-from-image.js"></script>
   <script src="app.js"></script>
+  <script src="roblox.js"></script>
+  <script src="youtube/themes.js"></script>
+  <script src="youtube/fx-engine.js"></script>
+  <script src="youtube.js"></script>
 </body>
 </html>
