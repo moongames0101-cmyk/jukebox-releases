@@ -6,7 +6,10 @@ param(
   [switch]$Force
 )
 $ErrorActionPreference = 'SilentlyContinue'
-if (-not (Test-Path -LiteralPath $Path)) { exit 0 }
+$log = Join-Path $env:TEMP 'gel-update.log'
+function Note([string]$m) { Write-Output $m; Add-Content -LiteralPath $log -Value ((Get-Date -Format s) + ' ' + $m) }
+Note ("Freeing Gel's files in $Path" + $(if ($Force) { ' (force)' } else { '' }))
+if (-not (Test-Path -LiteralPath $Path)) { Note 'Gel is not installed there.'; exit 0 }
 $Path = (Resolve-Path -LiteralPath $Path).Path.TrimEnd('\')
 
 Add-Type -Language CSharp -TypeDefinition @'
@@ -78,19 +81,28 @@ if ($files.Count -gt 0) {
     if ($p) { $targets[$p.Id] = $p }
   }
 }
-$targets.Remove($PID)
+# Never close this script or whatever started it: Gel's installer or uninstaller, which keeps its
+# own log inside Gel's folder while it works.
+$id = $PID
+while ($id) {
+  $targets.Remove($id)
+  $parent = (Get-CimInstance Win32_Process -Filter "ProcessId=$id").ParentProcessId
+  if (-not $parent -or $parent -eq $id) { break }
+  $id = $parent
+}
 foreach ($id in @($targets.Keys)) { if ($keep -contains $targets[$id].ProcessName) { $targets.Remove($id) } }
-if ($targets.Count -eq 0) { Write-Output 'Nothing is using Gel''s files.'; exit 0 }
+if ($targets.Count -eq 0) { Note 'Nothing else is using Gel''s files.'; exit 0 }
 
 # Ask nicely first, so programs can save; then make sure.
 foreach ($p in $targets.Values) {
-  Write-Output ("Closing {0} ({1}), which is using Gel's files" -f $p.ProcessName, $p.Id)
+  Note ("Closing {0} ({1}), which is using Gel's files" -f $p.ProcessName, $p.Id)
   if (-not $Force) { [void]$p.CloseMainWindow() }
 }
 if (-not $Force) {
   $deadline = (Get-Date).AddSeconds(6)
   while ((Get-Date) -lt $deadline -and ($targets.Values | Where-Object { -not $_.HasExited })) { Start-Sleep -Milliseconds 250 }
 }
-foreach ($p in $targets.Values) { if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force } }
+foreach ($p in $targets.Values) { if (-not $p.HasExited) { Note ("Force-closing {0} ({1})" -f $p.ProcessName, $p.Id); Stop-Process -Id $p.Id -Force } }
 Start-Sleep -Milliseconds 500
+Note 'Done.'
 exit 0

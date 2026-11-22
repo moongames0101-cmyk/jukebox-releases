@@ -76,6 +76,7 @@ jobs:
           if ($holder.HasExited) { throw "the test program didn't start holding the files" }
           $update = Start-Process $setup -ArgumentList '/S', '--updated' -Wait -PassThru
           "update exit code: $($update.ExitCode)"
+          Get-Content (Join-Path $env:TEMP 'gel-update.log') -ErrorAction SilentlyContinue | ForEach-Object { "log: $_" }
           if ($update.ExitCode -ne 0) { throw "the update failed with code $($update.ExitCode)" }
           Start-Sleep 1
           if (-not $holder.HasExited) { Stop-Process -Id $holder.Id -Force; throw "the program holding Gel's files wasn't closed" }
