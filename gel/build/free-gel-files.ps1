@@ -9,6 +9,7 @@ $ErrorActionPreference = 'SilentlyContinue'
 # The installer starts this in its own temp folder, which holds an unrelated System.dll that
 # the C# compiler below would pick up instead of .NET's. Work from somewhere neutral.
 Set-Location -LiteralPath $env:SystemRoot
+[Environment]::CurrentDirectory = $env:SystemRoot
 $log = Join-Path $env:TEMP 'gel-update.log'
 function Note([string]$m) { Write-Output $m; Add-Content -LiteralPath $log -Value ((Get-Date -Format s) + ' ' + $m) }
 Note ("Freeing Gel's files in $Path" + $(if ($Force) { ' (force)' } else { '' }))

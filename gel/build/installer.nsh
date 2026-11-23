@@ -14,6 +14,9 @@
   ${if} ${FileExists} "$WINDIR\Sysnative\WindowsPowerShell\v1.0\powershell.exe"
     StrCpy $2 "$WINDIR\Sysnative\WindowsPowerShell\v1.0\powershell.exe"
   ${endif}
+  ; Run it from the temp folder, not the plugins folder: that one holds NSIS's own System.dll,
+  ; which the C# compiler inside the script would load by mistake.
+  SetOutPath "$TEMP"
   ${if} ${FileExists} "$INSTDIR\*.*"
     nsExec::ExecToLog `"$2" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\free-gel-files.ps1" -Path "$INSTDIR" ${FLAGS}`
     Pop $1
