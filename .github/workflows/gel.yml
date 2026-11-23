@@ -57,6 +57,36 @@ jobs:
           grep -q "Gel-Setup.exe" dist/latest.yml
           cat dist/latest.yml
 
+      - name: Check an update gets past programs holding Gel's files
+        shell: pwsh
+        run: |
+          # Install, then have another program hold Gel's files open (the way an Electron app
+          # holds an app.asar it has looked at), then update. The update must close that program
+          # and go through, instead of stopping with "Failed to uninstall old application files".
+          $ErrorActionPreference = 'Stop'
+          $setup = (Resolve-Path dist/Gel-Setup.exe).Path
+          $dir = Join-Path $env:LOCALAPPDATA 'Programs\gel'
+          $first = Start-Process $setup -ArgumentList '/S' -PassThru
+          if (-not $first.WaitForExit(180000)) { throw "the first install got stuck" }
+          "first install exit code: $($first.ExitCode)"
+          if (-not (Test-Path "$dir\Gel.exe")) { throw "the first install didn't happen" }
+          Set-Content -Path "$dir\resources\app.asar" -Value 'an old archive'
+          $hold = "`$a = [IO.File]::Open('$dir\resources\app.asar', 'Open', 'Read', 'ReadWrite'); `$b = [IO.File]::Open('$dir\resources\app\main.js', 'Open', 'Read', 'ReadWrite'); Start-Sleep 300"
+          $holder = Start-Process powershell -PassThru -WindowStyle Hidden -ArgumentList '-NoProfile', '-Command', $hold
+          Start-Sleep 4
+          if ($holder.HasExited) { throw "the test program didn't start holding the files" }
+          $update = Start-Process $setup -ArgumentList '/S', '--updated' -PassThru
+          if (-not $update.WaitForExit(180000)) { Get-Content (Join-Path $env:TEMP 'gel-update.log') -ErrorAction SilentlyContinue | ForEach-Object { "log: $_" }; Stop-Process -Id $update.Id -Force; throw "the update got stuck" }
+          "update exit code: $($update.ExitCode)"
+          Get-Content (Join-Path $env:TEMP 'gel-update.log') -ErrorAction SilentlyContinue | ForEach-Object { "log: $_" }
+          if ($update.ExitCode -ne 0) { throw "the update failed with code $($update.ExitCode)" }
+          Start-Sleep 1
+          if (-not $holder.HasExited) { Stop-Process -Id $holder.Id -Force; throw "the program holding Gel's files wasn't closed" }
+          if (Test-Path "$dir\resources\app.asar") { throw "the old app.asar is still there" }
+          if (-not (Test-Path "$dir\resources\app\main.js")) { throw "the new files are missing" }
+          if (-not (Test-Path "$dir\Gel.exe")) { throw "Gel.exe is missing after the update" }
+          "The update closed the program holding Gel's files and went through."
+
       - uses: actions/upload-artifact@v4
         with:
           name: Gel-Setup
