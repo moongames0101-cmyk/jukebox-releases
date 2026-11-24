@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Gel for YouTube",
-  "version": "1.1.0",
-  "description": "Puts the YouTube theme you pick in Gel onto youtube.com, and skips and hides ads.",
+  "version": "1.2.0",
+  "description": "Puts the YouTube theme you pick in Gel onto youtube.com, blocks ads and adds a volume booster to the player.",
   "minimum_chrome_version": "111",
   "icons": {
     "16": "icons/16.png",
@@ -34,6 +34,7 @@
         "fx-engine.js",
         "yt-core.js",
         "gel-ads.js",
+        "gel-boost.js",
         "gel-yt.js"
       ],
       "run_at": "document_start",

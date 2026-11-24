@@ -7,7 +7,7 @@
   if (W.__gelYtLoaded) return;
   W.__gelYtLoaded = true;
 
-  var Core = W.GelYtCore, Fx = W.GelYtFx, Ads = W.GelYtAds;
+  var Core = W.GelYtCore, Fx = W.GelYtFx, Ads = W.GelYtAds, Boost = W.GelYtBoost;
   var isTop = W.top === W;
   var frame = /^\/live_chat/.test(location.pathname) ? 'chat' : 'top';
   if (!isTop && frame !== 'chat') return; // embeds and other frames stay as they are
@@ -26,7 +26,7 @@
   var CACHE_KEY = 'gel-yt-cache-v1';
   var S = {
     raw: null, theme: null, vars: {}, varCss: '', sheetsKey: '', addedDark: false,
-    fx: null, fxKey: '', fxHeld: null, playing: false, fonts: {}, blobs: {}, darkFixes: 0, ads: null,
+    fx: null, fxKey: '', fxHeld: null, playing: false, fonts: {}, blobs: {}, darkFixes: 0, ads: null, boost: null,
   };
 
   // ---------- Small helpers ----------
@@ -178,8 +178,17 @@
     D.addEventListener(ev, function () {
       var now = mainVideoPlaying();
       if (now !== S.playing) { S.playing = now; if (S.theme) updateFx(); }
+      updateCinema();
     }, true);
   });
+
+  // Cinema mode: the page steps back while the video you're watching plays (not in full screen).
+  function updateCinema() {
+    var on = !!(isTop && S.theme && S.theme.layout && S.theme.layout.cinema && S.playing &&
+      location.pathname === '/watch' && !D.fullscreenElement);
+    if (on !== H.classList.contains('gel-cinema')) H.classList.toggle('gel-cinema', on);
+  }
+  D.addEventListener('fullscreenchange', updateCinema);
 
   // ---------- Logo ----------
   function updateLogo() {
@@ -221,6 +230,7 @@
     if (theme.fonts) { loadFont(theme.fonts.body); loadFont(theme.fonts.heading); }
     if (isTop) { updateBackground(); updateLogo(); }
     H.setAttribute('gel-yt', theme.presetId || 'custom');
+    updateCinema();
   }
   function off() {
     S.theme = null;
@@ -231,6 +241,7 @@
     if (S.addedDark) { H.removeAttribute('dark'); S.addedDark = false; }
     H.removeAttribute('gel-yt');
     S.varCss = '';
+    updateCinema();
   }
 
   // Ad skipping is its own switch: it stays on when the theme is off.
@@ -238,6 +249,12 @@
     if (!isTop || !Ads) return;
     if (on && !S.ads) S.ads = Ads.start(D);
     else if (!on && S.ads) { S.ads.stop(); S.ads = null; }
+  }
+  // So is the volume booster.
+  function setBoost(on) {
+    if (!isTop || !Boost) return;
+    if (on && !S.boost) S.boost = Boost.start(D);
+    else if (!on && S.boost) { S.boost.stop(); S.boost = null; }
   }
   function saveCache() {
     try { localStorage.setItem(CACHE_KEY, JSON.stringify({ raw: S.raw, vars: S.varCss })); } catch (e) { /* storage blocked */ }
@@ -248,8 +265,9 @@
     var theme = null;
     try { theme = raw ? JSON.parse(raw) : null; } catch (e) { return; } // half-written file: try again next time
     setAds(!!(theme && theme.adblock));
+    setBoost(!!(theme && theme.boost));
     if (theme && theme.enabled) apply(theme); else if (S.theme || D.getElementById('gel-yt-page')) off();
-    if (theme && (theme.enabled || theme.adblock)) saveCache();
+    if (theme && (theme.enabled || theme.adblock || theme.boost)) saveCache();
     else { try { localStorage.removeItem(CACHE_KEY); } catch (e) { /* storage blocked */ } }
   }
 
@@ -288,7 +306,7 @@
   D.addEventListener('visibilitychange', function () { if (!D.hidden) poll(); });
   D.addEventListener('DOMContentLoaded', tidy);
   W.addEventListener('load', tidy);
-  ['yt-navigate-finish', 'yt-page-data-updated'].forEach(function (ev) { W.addEventListener(ev, function () { setTimeout(tidy, 50); }); });
+  ['yt-navigate-finish', 'yt-page-data-updated'].forEach(function (ev) { W.addEventListener(ev, function () { S.playing = mainVideoPlaying(); updateCinema(); setTimeout(tidy, 50); }); });
 
   W.__gelYt = { state: S, apply: apply, off: off, handle: handle, tidy: tidy };
 })();

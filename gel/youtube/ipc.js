@@ -3,7 +3,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { writeExtension, turnOff, setAdblock, readStatus, clearReloadFlag, pictureType } = require('./writer');
+const { writeExtension, turnOff, setSwitch, readStatus, clearReloadFlag, pictureType } = require('./writer');
 
 const MB = 1024 * 1024;
 const KINDS = ['logo', 'background'];
@@ -53,11 +53,12 @@ function registerYoutube({ ipcMain, app, shell, appDir, appData = process.env.AP
   const lastPath = path.join(dataDir, 'last-applied.json');
   const settingsPath = path.join(dataDir, 'settings.json');
 
-  // Settings that belong to Gel for YouTube as a whole, not to one theme. Ads are skipped unless you say no.
+  // Settings that belong to Gel for YouTube as a whole, not to one theme. Ads are blocked and
+  // the player has the volume booster unless you say no.
   function settings() {
     let s = {};
     try { s = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) || {}; } catch (e) { /* defaults */ }
-    return { adblock: s.adblock !== false };
+    return { adblock: s.adblock !== false, boost: s.boost !== false };
   }
   function saveSettings(patch) {
     fs.mkdirSync(dataDir, { recursive: true });
@@ -80,7 +81,7 @@ function registerYoutube({ ipcMain, app, shell, appDir, appData = process.env.AP
   }
 
   function status() {
-    return Object.assign(readStatus(extDir), { dir: extDir, themes: Themes.THEMES.length, browsers: browsersWith(extDir, { appData, localAppData }), adblock: settings().adblock });
+    return Object.assign(readStatus(extDir), { dir: extDir, themes: Themes.THEMES.length, browsers: browsersWith(extDir, { appData, localAppData }) }, settings());
   }
 
   // Builds the theme in the main process too, so what lands in the extension is always checked.
@@ -96,7 +97,7 @@ function registerYoutube({ ipcMain, app, shell, appDir, appData = process.env.AP
 
   function write(payload) {
     const parts = build(payload);
-    const res = writeExtension(Object.assign({ srcDir, outDir: extDir, adblock: settings().adblock }, parts));
+    const res = writeExtension(Object.assign({ srcDir, outDir: extDir }, settings(), parts));
     fs.mkdirSync(dataDir, { recursive: true });
     fs.writeFileSync(lastPath, JSON.stringify({ presetId: payload.presetId, custom: payload.custom || {} }));
     return res;
@@ -168,16 +169,19 @@ function registerYoutube({ ipcMain, app, shell, appDir, appData = process.env.AP
     return { ok: true };
   });
 
-  ipcMain.handle('youtube:set-adblock', (_e, on) => {
+  // Ads and the booster are switches of their own: they take effect at once, theme or no theme.
+  function flip(name, on) {
     try {
-      saveSettings({ adblock: !!on });
-      if (fs.existsSync(path.join(extDir, 'manifest.json'))) setAdblock(extDir, !!on);
+      saveSettings({ [name]: !!on });
+      if (fs.existsSync(path.join(extDir, 'manifest.json'))) setSwitch(extDir, name, !!on);
       else writeIdle();
       return { ok: true, status: status() };
     } catch (err) {
       return { ok: false, message: err.message, status: status() };
     }
-  });
+  }
+  ipcMain.handle('youtube:set-adblock', (_e, on) => flip('adblock', on));
+  ipcMain.handle('youtube:set-boost', (_e, on) => flip('boost', on));
 
   ipcMain.handle('youtube:ack-reload', () => { clearReloadFlag(extDir); return { ok: true, status: status() }; });
 

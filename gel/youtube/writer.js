@@ -13,6 +13,7 @@ const CODE = {
   'yt-core.js': 'youtube/extension/yt-core.js',
   'gel-ads.js': 'youtube/extension/gel-ads.js',
   'gel-ads-main.js': 'youtube/extension/gel-ads-main.js',
+  'gel-boost.js': 'youtube/extension/gel-boost.js',
   'gel-yt.js': 'youtube/extension/gel-yt.js',
 };
 const STATIC = {
@@ -88,8 +89,8 @@ function emblemSvg(glyph, color) {
 }
 
 // theme: from GelYtThemes.buildTheme. logoPicture / backgroundPicture: Buffers of your own pictures.
-// adblock: whether the extension skips and hides ads.
-function writeExtension({ srcDir, outDir, theme, logoPicture = null, backgroundPicture = null, adblock = false }) {
+// adblock: whether the extension skips and hides ads. boost: whether the player gets the volume booster.
+function writeExtension({ srcDir, outDir, theme, logoPicture = null, backgroundPicture = null, adblock = false, boost = false }) {
   if (!theme || !theme.palette) throw new Error('No theme to write.');
   fs.mkdirSync(outDir, { recursive: true });
 
@@ -137,6 +138,7 @@ function writeExtension({ srcDir, outDir, theme, logoPicture = null, backgroundP
   t.logo = logo;
   t.enabled = true;
   t.adblock = !!adblock;
+  t.boost = !!boost;
   t.writtenAt = Date.now();
 
   const mediaDir = path.join(outDir, 'media');
@@ -147,20 +149,25 @@ function writeExtension({ srcDir, outDir, theme, logoPicture = null, backgroundP
   return { dir: outDir, codeUpdated, theme: t };
 }
 
-function turnOff(outDir, { adblock = false } = {}) {
+function turnOff(outDir, { adblock = false, boost = false } = {}) {
   if (!fs.existsSync(outDir)) return;
-  writeAtomic(path.join(outDir, 'theme.json'), JSON.stringify({ enabled: false, adblock: !!adblock, writtenAt: Date.now() }));
+  writeAtomic(path.join(outDir, 'theme.json'), JSON.stringify({ enabled: false, adblock: !!adblock, boost: !!boost, writtenAt: Date.now() }));
 }
 
-// Changes only the ad switch, keeping whatever theme is on.
-function setAdblock(outDir, adblock) {
+// The switches that work with or without a theme on.
+const SWITCHES = ['adblock', 'boost'];
+
+// Changes one of those switches, keeping whatever theme is on.
+function setSwitch(outDir, name, on) {
+  if (!SWITCHES.includes(name)) throw new Error('Unknown setting: ' + name);
   let t = null;
   try { t = JSON.parse(fs.readFileSync(path.join(outDir, 'theme.json'), 'utf8')); } catch (e) { /* none yet */ }
   if (!t || typeof t !== 'object') t = { enabled: false };
-  t.adblock = !!adblock;
+  t[name] = !!on;
   t.writtenAt = Date.now();
   writeAtomic(path.join(outDir, 'theme.json'), JSON.stringify(t, null, 1));
 }
+function setAdblock(outDir, adblock) { setSwitch(outDir, 'adblock', adblock); }
 
 function readStatus(outDir) {
   const s = { installed: false, enabled: false, name: null, version: null, needsReload: false };
@@ -179,4 +186,4 @@ function readStatus(outDir) {
 
 function clearReloadFlag(outDir) { fs.rmSync(path.join(outDir, RELOAD_FLAG), { force: true }); }
 
-module.exports = { writeExtension, turnOff, setAdblock, readStatus, clearReloadFlag, pictureType, EXT_FILES };
+module.exports = { writeExtension, turnOff, setSwitch, setAdblock, SWITCHES, readStatus, clearReloadFlag, pictureType, EXT_FILES };

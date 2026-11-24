@@ -180,6 +180,7 @@ test('refreshing brings an extension made by an older Gel up to date', async () 
   // What Gel 1.3.6 and older left behind: no ad-blocker files, manifest 1.0.0.
   fs.rmSync(path.join(extDir, 'gel-ads.js'));
   fs.rmSync(path.join(extDir, 'gel-ads-main.js'));
+  fs.rmSync(path.join(extDir, 'gel-boost.js'));
   const mf = path.join(extDir, 'manifest.json');
   const m = JSON.parse(fs.readFileSync(mf, 'utf8'));
   m.version = '1.0.0';
@@ -189,8 +190,40 @@ test('refreshing brings an extension made by an older Gel up to date', async () 
   yt.refresh();
   assert.ok(fs.existsSync(path.join(extDir, 'gel-ads.js')));
   assert.ok(fs.existsSync(path.join(extDir, 'gel-ads-main.js')));
-  assert.equal(JSON.parse(fs.readFileSync(mf, 'utf8')).version, '1.1.0');
+  assert.ok(fs.existsSync(path.join(extDir, 'gel-boost.js')));
+  assert.equal(JSON.parse(fs.readFileSync(mf, 'utf8')).version, '1.2.0');
   assert.equal(readTheme().name, 'Galaxy');
   assert.equal(readTheme().adblock, true);
   assert.equal((await call('youtube:status')).needsReload, true);
+});
+
+test('the volume booster is on unless you turn it off', async () => {
+  assert.equal((await call('youtube:status')).boost, true);
+  await call('youtube:apply', { presetId: 'sakura', custom: {} });
+  assert.equal(readTheme().boost, true);
+});
+
+test('the booster switch takes effect straight away, theme or no theme', async () => {
+  await call('youtube:apply', { presetId: 'sakura', custom: {} });
+  let res = await call('youtube:set-boost', false);
+  assert.equal(res.ok, true);
+  assert.equal(readTheme().boost, false);
+  assert.equal(readTheme().name, 'Sakura Dream');
+  assert.equal(readTheme().adblock, true);
+  assert.equal(res.status.boost, false);
+  await call('youtube:off');
+  assert.equal(readTheme().boost, false);
+  res = await call('youtube:set-boost', true);
+  assert.equal(readTheme().boost, true);
+  assert.equal(readTheme().enabled, false);
+  await call('youtube:apply', { presetId: 'galaxy', custom: {} });
+  assert.equal(readTheme().boost, true);
+});
+
+test('turning the booster on before the extension exists makes it, with the theme off', async () => {
+  const res = await call('youtube:set-boost', true);
+  assert.equal(res.ok, true);
+  assert.equal(readTheme().enabled, false);
+  assert.equal(readTheme().boost, true);
+  assert.equal(res.status.installed, true);
 });

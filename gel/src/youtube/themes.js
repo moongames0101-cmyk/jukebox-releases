@@ -70,7 +70,7 @@
     return { id: t[0], name: t[1], blurb: t[2], seeds: t[3], font: t[4], headingFont: t[5], effect: t[6], effectColors: t[7].map(function (c) { return '#' + c; }), glass: t[8] };
   });
 
-  function defaultLayout() { return { hideShorts: false, perRow: 0, hideAmbient: true, animateWhilePlaying: false }; }
+  function defaultLayout() { return { hideShorts: false, perRow: 0, hideAmbient: true, animateWhilePlaying: false, cinema: true }; }
   function defaultLogo() { return { mode: 'keep', glyph: 'gel', text: '', image: null }; }
 
   // Everything the extension needs, as plain data. "custom" is what the person changed.

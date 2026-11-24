@@ -166,10 +166,10 @@
     var out = [];
     var top = opts.frame !== 'chat';
 
-    out.push(':root { --gel-accent: ' + p.accent + '; --gel-accent2: ' + p.accent2 + '; --gel-radius: ' + radius + 'px; color-scheme: ' + (p.light ? 'light' : 'dark') + '; }');
+    out.push(':root { --gel-accent: ' + p.accent + '; --gel-accent2: ' + p.accent2 + '; --gel-on-accent: ' + p.onAccent + '; --gel-menu: ' + p.menu + '; --gel-radius: ' + radius + 'px; color-scheme: ' + (p.light ? 'light' : 'dark') + '; }');
     out.push('html { background: ' + p.bg + ' !important; }');
     out.push('::selection { background: ' + rgbaOf(p.accent, 0.35) + '; }');
-    out.push('html { scrollbar-color: ' + rgbaOf(p.text, 0.28) + ' transparent; }');
+    out.push('html { scrollbar-color: ' + rgbaOf(p.accent, 0.55) + ' transparent; }');
 
     if (top) {
       // The page shows Gel's background through it.
@@ -193,8 +193,9 @@
     out.push('.ytp-scrubber-button, .ytp-swatch-background-color-secondary { background: ' + p.accent + ' !important; }');
     out.push('.ytp-settings-button.ytp-hd-quality-badge::after, .ytp-settings-button.ytp-4k-quality-badge::after { background-color: ' + p.accent + ' !important; }');
     out.push('ytd-thumbnail-overlay-resume-playback-renderer #progress, .ytThumbnailOverlayProgressBarHostWatchedProgressBarSegment, .ytProgressBarLineProgressBarPlayed, #progress.ytd-thumbnail-overlay-resume-playback-renderer { background: linear-gradient(90deg, ' + p.accent + ', ' + p.accent2 + ') !important; }');
-    out.push('ytd-subscribe-button-renderer button.yt-spec-button-shape-next--filled, ytd-subscribe-button-renderer button.ytSpecButtonShapeNextFilled, yt-subscribe-button-view-model button.yt-spec-button-shape-next--filled, yt-subscribe-button-view-model button.ytSpecButtonShapeNextFilled { background: ' + p.accent + ' !important; color: ' + p.onAccent + ' !important; }');
-    out.push('yt-chip-cloud-chip-renderer[selected] #chip-container, .ytChipShapeActive, chip-shape .ytChipShapeActive { background: ' + p.accent + ' !important; color: ' + p.onAccent + ' !important; }');
+    var grad = 'linear-gradient(135deg, ' + p.accent + ', ' + p.accent2 + ')';
+    out.push('ytd-subscribe-button-renderer button.yt-spec-button-shape-next--filled, ytd-subscribe-button-renderer button.ytSpecButtonShapeNextFilled, yt-subscribe-button-view-model button.yt-spec-button-shape-next--filled, yt-subscribe-button-view-model button.ytSpecButtonShapeNextFilled { background: ' + grad + ' !important; color: ' + p.onAccent + ' !important; box-shadow: 0 4px 18px ' + rgbaOf(p.accent, 0.45) + ' !important; }');
+    out.push('yt-chip-cloud-chip-renderer[selected] #chip-container, .ytChipShapeActive, chip-shape .ytChipShapeActive { background: ' + grad + ' !important; color: ' + p.onAccent + ' !important; border-color: transparent !important; box-shadow: 0 4px 16px ' + rgbaOf(p.accent, 0.45) + ' !important; }');
     out.push('.yt-core-attributed-string__link--call-to-action-color { color: ' + p.link + ' !important; }');
     out.push('#voice-search-button button, .ytSearchboxComponentInputBox { background: ' + rgbaOf(p.text, 0.06) + ' !important; }');
     out.push('.ytSearchboxComponentInputBox, .ytSearchboxComponentSearchButton { border-color: ' + rgbaOf(p.text, 0.16) + ' !important; }');
@@ -203,11 +204,55 @@
     out.push('.ytSearchboxComponentInput::placeholder { color: ' + p.text2 + ' !important; }');
     out.push('.ytSearchboxComponentSearchButton, .ytSearchboxComponentClearButton, .ytSearchboxComponentSearchButton yt-icon, .ytSearchboxComponentClearButton yt-icon { color: ' + p.text + ' !important; fill: ' + p.text + ' !important; }');
     out.push('.ytSearchboxComponentInputBoxDark, .ytSearchboxComponentSearchButtonDark { background-color: ' + rgbaOf(p.text, 0.06) + ' !important; }');
-    out.push('.ytSearchboxComponentInputBoxDark.ytSearchboxComponentInputBoxHasFocus { border-color: ' + p.accent + ' !important; }');
+    out.push('.ytSearchboxComponentInputBox { transition: border-color .2s, box-shadow .2s, background-color .2s !important; box-shadow: inset 0 1px 0 ' + rgbaOf(p.text, 0.06) + ', 0 4px 18px rgba(0, 0, 0, 0.22) !important; }');
+    out.push('.ytSearchboxComponentInputBox.ytSearchboxComponentInputBoxHasFocus, .ytSearchboxComponentInputBoxDark.ytSearchboxComponentInputBoxHasFocus { border-color: ' + p.accent + ' !important; box-shadow: 0 0 0 1px ' + p.accent + ', 0 0 24px ' + rgbaOf(p.accent, 0.45) + ' !important; }');
+    out.push('.ytSearchboxComponentSearchButton, .ytSearchboxComponentSearchButtonDark { background: ' + grad + ' !important; border-color: transparent !important; transition: filter .2s, box-shadow .2s !important; }');
+    out.push('.ytSearchboxComponentSearchButton:hover { filter: brightness(1.12); box-shadow: 0 0 18px ' + rgbaOf(p.accent, 0.5) + ' !important; }');
+    out.push('.ytSearchboxComponentSearchButton, .ytSearchboxComponentSearchButton yt-icon, .ytSearchboxComponentSearchButton svg { color: ' + p.onAccent + ' !important; fill: ' + p.onAccent + ' !important; }');
+    out.push('.ytSearchboxComponentSuggestionsContainer { background: ' + rgbaOf(p.menu, 0.9) + ' !important; backdrop-filter: blur(24px) saturate(1.4) !important; border: 1px solid ' + rgbaOf(p.text, 0.1) + ' !important; border-radius: 18px !important; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45) !important; overflow: hidden; }');
+    out.push('.ytSearchboxComponentSuggestionsContainer [role="option"]:hover, .ytSearchboxComponentSuggestionsContainer [aria-selected="true"] { background: ' + rgbaOf(p.accent, 0.16) + ' !important; }');
 
     // Rounded corners.
     out.push('yt-thumbnail-view-model, .yt-thumbnail-view-model, ytd-thumbnail a#thumbnail, ytd-thumbnail #thumbnail.ytd-thumbnail, .ytThumbnailViewModelImage, ytd-playlist-thumbnail, .yt-spec-touch-feedback-shape--overlay-touch-response { border-radius: var(--gel-radius) !important; }');
     out.push('ytd-menu-popup-renderer, ytd-multi-page-menu-renderer, tp-yt-paper-dialog, #description.ytd-watch-metadata, ytd-engagement-panel-section-list-renderer { border-radius: calc(var(--gel-radius) + 2px) !important; }');
+
+    // Video player: accent controls, theme-glass menus. Icons over the picture stay white.
+    var VP = '.html5-video-player ';
+    out.push(VP + '.ytp-volume-slider-handle, ' + VP + '.ytp-volume-slider-handle::before { background: ' + p.accent + ' !important; }');
+    out.push(VP + '.ytp-volume-slider-handle { box-shadow: 0 0 10px ' + rgbaOf(p.accent, 0.7) + ' !important; }');
+    out.push(VP + '.ytp-large-play-button .ytp-large-play-button-bg, ' + VP + '.ytp-large-play-button svg path:first-child { fill: ' + p.accent + ' !important; fill-opacity: 0.92 !important; }');
+    out.push(VP + '.ytp-autonav-toggle-button[aria-checked="true"], ' + VP + '.ytp-menuitem[aria-checked="true"] .ytp-menuitem-toggle-checkbox { background: ' + grad + ' !important; }');
+    out.push(VP + '.ytp-popup, ' + VP + '.ytp-settings-menu, ' + VP + '.ytp-contextmenu, .ytp-popup.ytp-contextmenu { background: ' + rgbaOf(p.menu, 0.74) + ' !important; backdrop-filter: blur(22px) saturate(1.4) !important; border: 1px solid ' + rgbaOf(p.text, 0.12) + ' !important; border-radius: calc(var(--gel-radius) + 2px) !important; box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5) !important; }');
+    out.push(VP + '.ytp-popup, ' + VP + '.ytp-popup .ytp-menuitem, ' + VP + '.ytp-popup .ytp-menuitem-label, ' + VP + '.ytp-popup .ytp-menuitem-content, ' + VP + '.ytp-popup .ytp-panel-title, .ytp-contextmenu .ytp-menuitem { color: ' + p.text + ' !important; fill: ' + p.text + ' !important; }');
+    out.push(VP + '.ytp-menuitem:hover, ' + VP + '.ytp-menuitem:focus, .ytp-contextmenu .ytp-menuitem:hover { background: ' + rgbaOf(p.accent, 0.18) + ' !important; }');
+    out.push(VP + '.ytp-tooltip-text, ' + VP + '.ytp-tooltip-title { background: ' + rgbaOf(p.menu, 0.82) + ' !important; color: ' + p.text + ' !important; border-radius: 8px !important; }');
+    out.push(VP + '.ytp-delhi-modern .ytp-time-wrapper, ' + VP + '.ytp-delhi-modern .ytp-right-controls, ' + VP + '.ytp-delhi-modern .ytp-play-button, ' + VP + '.ytp-delhi-modern .ytp-volume-area { background-color: ' + rgbaOf(p.bg, 0.5) + ' !important; box-shadow: inset 0 0 0 1px ' + rgbaOf(p.accent, 0.28) + ' !important; }');
+    if (body) out.push(VP + '.ytp-popup, ' + VP + '.ytp-popup *, ' + VP + '.ytp-time-display, ' + VP + '.ytp-time-display *, ' + VP + '.ytp-chapter-title-content, ' + VP + '.ytp-tooltip-text, .ytp-contextmenu *, .gel-boost-pop, .gel-boost-pop * { font-family: ' + body + ' !important; }');
+
+    // Polish: glass pills, lifting thumbnails, a lit-up side menu.
+    if (top) {
+      out.push('#masthead-container::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; pointer-events: none; background: linear-gradient(90deg, transparent, ' + rgbaOf(p.accent, 0.55) + ', ' + rgbaOf(p.accent2, 0.55) + ', transparent); }');
+      out.push('chip-shape [class*="ytChipShapeChip"]:not(.ytChipShapeActive), yt-chip-cloud-chip-renderer:not([selected]) #chip-container { background: ' + rgbaOf(p.text, 0.07) + ' !important; border: 1px solid ' + rgbaOf(p.text, 0.1) + ' !important; transition: transform .15s, background .15s !important; }');
+      out.push('chip-shape:hover [class*="ytChipShapeChip"]:not(.ytChipShapeActive), yt-chip-cloud-chip-renderer:not([selected]):hover #chip-container { background: ' + rgbaOf(p.text, 0.13) + ' !important; transform: translateY(-1px); }');
+      out.push('ytd-watch-metadata button.ytSpecButtonShapeNextTonal, ytd-watch-metadata button.yt-spec-button-shape-next--tonal { background: ' + rgbaOf(p.text, 0.08) + ' !important; border: 1px solid ' + rgbaOf(p.text, 0.1) + ' !important; transition: background .15s, box-shadow .15s !important; }');
+      out.push('ytd-watch-metadata button.ytSpecButtonShapeNextTonal:hover, ytd-watch-metadata button.yt-spec-button-shape-next--tonal:hover { background: ' + rgbaOf(p.accent, 0.2) + ' !important; box-shadow: 0 0 14px ' + rgbaOf(p.accent, 0.3) + ' !important; }');
+      out.push('ytd-rich-item-renderer yt-thumbnail-view-model, ytd-video-renderer yt-thumbnail-view-model, yt-lockup-view-model yt-thumbnail-view-model, ytd-video-renderer ytd-thumbnail, ytd-compact-video-renderer ytd-thumbnail { transition: transform .2s ease, box-shadow .2s ease !important; }');
+      out.push('ytd-rich-item-renderer:hover yt-thumbnail-view-model, ytd-video-renderer:hover yt-thumbnail-view-model, yt-lockup-view-model:hover yt-thumbnail-view-model, ytd-video-renderer:hover ytd-thumbnail, ytd-compact-video-renderer:hover ytd-thumbnail { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 0 1px ' + rgbaOf(p.accent, 0.35) + ', 0 0 24px ' + rgbaOf(p.accent, 0.25) + ' !important; }');
+      out.push('ytd-guide-entry-renderer[active] tp-yt-paper-item, ytd-guide-entry-renderer[active] a#endpoint { background: linear-gradient(90deg, ' + rgbaOf(p.accent, 0.28) + ', ' + rgbaOf(p.accent2, 0.1) + ') !important; box-shadow: inset 3px 0 0 ' + p.accent + ' !important; border-radius: 10px !important; }');
+      out.push('ytd-guide-entry-renderer:not([active]) tp-yt-paper-item:hover, ytd-guide-entry-renderer:not([active]) a#endpoint:hover { background: ' + rgbaOf(p.accent, 0.12) + ' !important; }');
+      out.push('ytd-mini-guide-entry-renderer[aria-selected="true"] yt-icon, ytd-mini-guide-entry-renderer[aria-selected="true"] .title { color: ' + p.accent + ' !important; }');
+      out.push('ytd-app :focus-visible { outline: 2px solid ' + p.accent + ' !important; outline-offset: 2px; }');
+    }
+
+    // Cinema mode: while a video plays, everything but the player steps back.
+    if (top && lay.cinema) {
+      var DIM = ['#masthead-container', '#frosted-glass', 'tp-yt-app-drawer#guide', 'ytd-mini-guide-renderer', 'ytd-watch-flexy #secondary', 'ytd-watch-flexy #below', '#gel-yt-bg'];
+      out.push(DIM.join(', ') + ' { transition: opacity .6s ease !important; }');
+      out.push(DIM.map(function (d) { return 'html.gel-cinema ' + d; }).join(', ') + ' { opacity: 0.15 !important; }');
+      out.push(DIM.slice(0, 6).map(function (d) { return 'html.gel-cinema ' + d + ':hover'; }).join(', ') + ' { opacity: 1 !important; }');
+      out.push('ytd-watch-flexy #movie_player { transition: box-shadow .6s ease !important; }');
+      out.push('html.gel-cinema ytd-watch-flexy #movie_player { box-shadow: 0 0 0 1px ' + rgbaOf(p.accent, 0.35) + ', 0 0 60px 6px ' + rgbaOf(p.accent, 0.35) + ', 0 0 140px 30px ' + rgbaOf(p.accent2, 0.2) + ' !important; }');
+    }
 
     // Fonts.
     if (body) {

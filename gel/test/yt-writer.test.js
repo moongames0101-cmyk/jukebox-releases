@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { writeExtension, turnOff, readStatus, EXT_FILES } = require('../youtube/writer');
+const { writeExtension, turnOff, readStatus, setSwitch, EXT_FILES } = require('../youtube/writer');
 const { THEMES, buildTheme } = require('../src/youtube/themes.js');
 
 const srcDir = path.join(__dirname, '..', 'src');
@@ -89,7 +89,7 @@ test('readStatus reports what is in the folder', () => {
   assert.equal(s.installed, true);
   assert.equal(s.enabled, true);
   assert.equal(s.name, 'Sakura Dream');
-  assert.equal(s.version, '1.1.0');
+  assert.equal(s.version, '1.2.0');
 });
 
 test('readStatus notices when the extension code changed and Opera needs to reload it', () => {
@@ -135,4 +135,41 @@ test('the extension loads the ad skipper before the theme script', () => {
   const js = JSON.parse(fs.readFileSync(path.join(out, 'manifest.json'), 'utf8')).content_scripts.find((c) => c.js.includes('gel-yt.js')).js;
   assert.ok(js.indexOf('gel-ads.js') > -1 && js.indexOf('gel-ads.js') < js.indexOf('gel-yt.js'));
   assert.ok(fs.existsSync(path.join(out, 'gel-ads.js')));
+});
+
+test('the volume booster switch is written into theme.json', () => {
+  writeExtension({ srcDir, outDir: out, theme: buildTheme(THEMES[0]), boost: true });
+  assert.equal(JSON.parse(fs.readFileSync(path.join(out, 'theme.json'), 'utf8')).boost, true);
+  writeExtension({ srcDir, outDir: out, theme: buildTheme(THEMES[0]), boost: false });
+  assert.equal(JSON.parse(fs.readFileSync(path.join(out, 'theme.json'), 'utf8')).boost, false);
+});
+
+test('the booster stays on when the theme is turned off', () => {
+  writeExtension({ srcDir, outDir: out, theme: buildTheme(THEMES[0]), boost: true, adblock: true });
+  turnOff(out, { adblock: true, boost: true });
+  const th = JSON.parse(fs.readFileSync(path.join(out, 'theme.json'), 'utf8'));
+  assert.equal(th.enabled, false);
+  assert.equal(th.boost, true);
+  assert.equal(th.adblock, true);
+});
+
+test('switching one setting keeps the theme and the other setting', () => {
+  writeExtension({ srcDir, outDir: out, theme: buildTheme(THEMES[0]), boost: true, adblock: true });
+  setSwitch(out, 'boost', false);
+  let th = JSON.parse(fs.readFileSync(path.join(out, 'theme.json'), 'utf8'));
+  assert.equal(th.boost, false);
+  assert.equal(th.adblock, true);
+  assert.equal(th.name, 'Gel Glass');
+  setSwitch(out, 'adblock', false);
+  th = JSON.parse(fs.readFileSync(path.join(out, 'theme.json'), 'utf8'));
+  assert.equal(th.adblock, false);
+  assert.throws(() => setSwitch(out, 'enabled', true));
+});
+
+test('the extension loads the booster before the theme script', () => {
+  writeExtension({ srcDir, outDir: out, theme: buildTheme(THEMES[0]) });
+  const js = JSON.parse(fs.readFileSync(path.join(out, 'manifest.json'), 'utf8')).content_scripts.find((c) => c.js.includes('gel-yt.js')).js;
+  assert.ok(js.indexOf('gel-boost.js') > -1 && js.indexOf('gel-boost.js') < js.indexOf('gel-yt.js'));
+  assert.ok(fs.existsSync(path.join(out, 'gel-boost.js')));
+  assert.ok(EXT_FILES.includes('gel-boost.js'));
 });

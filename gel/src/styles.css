@@ -1077,7 +1077,12 @@ body:not([data-app="youtube"]) [data-only="youtube"] { display: none !important;
   background: color-mix(in srgb, var(--y-text) 6%, transparent); color: var(--y-text2); padding-left: 14px;
 }
 .y-search span { flex: 1; }
-.y-search i { width: 52px; height: 100%; display: grid; place-items: center; background: color-mix(in srgb, var(--y-text) 8%, transparent); border-left: 1px solid color-mix(in srgb, var(--y-text) 16%, transparent); color: var(--y-text); }
+.y-search i { width: 52px; height: 100%; display: grid; place-items: center; background: linear-gradient(135deg, var(--y-acc), var(--y-acc2)); color: var(--y-on-acc); }
+.y-search { box-shadow: 0 0 0 1px var(--y-acc), 0 0 20px color-mix(in srgb, var(--y-acc) 40%, transparent); }
+.y-top::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--y-acc) 55%, transparent), color-mix(in srgb, var(--y-acc2) 55%, transparent), transparent); }
+.y-vid .th { transition: transform .2s ease, box-shadow .2s ease; }
+.y-vid:hover .th { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,.45), 0 0 0 1px color-mix(in srgb, var(--y-acc) 35%, transparent), 0 0 22px color-mix(in srgb, var(--y-acc) 25%, transparent); }
+.y-frame .y-side span.on { background: linear-gradient(90deg, color-mix(in srgb, var(--y-acc) 28%, transparent), color-mix(in srgb, var(--y-acc2) 10%, transparent)); box-shadow: inset 3px 0 0 var(--y-acc); }
 .y-search svg { width: 16px; height: 16px; }
 .y-me { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--y-acc), var(--y-acc2)); flex: none; }
 .y-side { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 2px; padding: 8px; background: var(--y-side); }
@@ -1087,7 +1092,8 @@ body:not([data-app="youtube"]) [data-only="youtube"] { display: none !important;
 .y-main { position: relative; z-index: 1; min-width: 0; overflow: hidden; padding: 10px 18px; }
 .y-chips { display: flex; gap: 8px; margin-bottom: 14px; overflow: hidden; }
 .y-chips span { padding: 6px 12px; border-radius: 8px; white-space: nowrap; font-weight: 500; background: color-mix(in srgb, var(--y-text) 10%, transparent); }
-.y-chips span.on { background: var(--y-acc); color: var(--y-on-acc); }
+.y-chips span.on { background: linear-gradient(135deg, var(--y-acc), var(--y-acc2)); color: var(--y-on-acc); box-shadow: 0 4px 14px color-mix(in srgb, var(--y-acc) 45%, transparent); }
+.y-chips span:not(.on) { border: 1px solid color-mix(in srgb, var(--y-text) 10%, transparent); }
 .y-grid { display: grid; grid-template-columns: repeat(var(--y-cols, 3), minmax(0, 1fr)); gap: 16px 12px; }
 .y-vid .th { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: var(--y-radius); background: var(--th); }
 .y-vid .th em { position: absolute; right: 5px; bottom: 6px; padding: 2px 4px; border-radius: 4px; font: 600 10.5px/1 var(--y-font); font-style: normal; background: rgba(0,0,0,.65); color: #fff; }

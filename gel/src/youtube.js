@@ -282,24 +282,33 @@
     $('#ytHideShorts').checked = !!L.hideShorts;
     $('#ytHideAmbient').checked = !!L.hideAmbient;
     $('#ytAnimatePlaying').checked = !!L.animateWhilePlaying;
+    $('#ytCinema').checked = !!L.cinema;
   }
   document.querySelectorAll('[data-yt-row]').forEach(b => b.addEventListener('click', () => changeIn('layout', { perRow: Number(b.dataset.ytRow) })));
   $('#ytHideShorts').addEventListener('change', e => changeIn('layout', { hideShorts: e.target.checked }));
   $('#ytHideAmbient').addEventListener('change', e => changeIn('layout', { hideAmbient: e.target.checked }));
   $('#ytAnimatePlaying').addEventListener('change', e => changeIn('layout', { animateWhilePlaying: e.target.checked }));
+  $('#ytCinema').addEventListener('change', e => changeIn('layout', { cinema: e.target.checked }));
 
-  // Ad blocking is one switch for all of YouTube, separate from the theme, and takes effect at once.
-  $('#ytAdblock').addEventListener('change', async e => {
+  // Ad blocking and the volume booster are switches for all of YouTube, separate from the
+  // theme, and take effect at once.
+  const SWITCHES = [
+    { id: '#ytAdblock', key: 'adblock', set: on => api.setAdblock(on),
+      on: 'Ads are blocked on YouTube now.', onNoExt: 'Ad blocking is on. Add the extension to Opera to use it (Setup tab).', off: 'Ads are back to normal on YouTube.' },
+    { id: '#ytBoost', key: 'boost', set: on => api.setBoost(on),
+      on: "The boost button is in YouTube's player now, next to the settings cog.", onNoExt: 'The volume booster is on. Add the extension to Opera to use it (Setup tab).', off: "The boost button is gone and YouTube's sound is back to normal." },
+  ];
+  SWITCHES.forEach(sw => $(sw.id).addEventListener('change', async e => {
     const on = e.target.checked;
     e.target.disabled = true;
     try {
-      const res = await api.setAdblock(on);
+      const res = await sw.set(on);
       if (res.status) state.status = res.status;
       if (!res.ok) { e.target.checked = !on; toast(res.message, true); return; }
       const added = state.status && state.status.browsers && state.status.browsers.length;
-      toast(on ? (added ? 'Ads are blocked on YouTube now.' : 'Ad blocking is on. Add the extension to Opera to use it (Setup tab).') : 'Ads are back to normal on YouTube.');
+      toast(on ? (added ? sw.on : sw.onNoExt) : sw.off);
     } finally { e.target.disabled = false; renderStatus(); }
-  });
+  }));
 
   // ---------- Logo ----------
   if (G) {
@@ -472,7 +481,9 @@
   }
   function renderStatus() {
     renderSteps();
-    if (state.status && typeof state.status.adblock === 'boolean' && document.activeElement !== $('#ytAdblock')) $('#ytAdblock').checked = state.status.adblock;
+    SWITCHES.forEach(sw => {
+      if (state.status && typeof state.status[sw.key] === 'boolean' && document.activeElement !== $(sw.id)) $(sw.id).checked = state.status[sw.key];
+    });
     if (ui.getApp() !== 'youtube') return;
     const s = state.status;
     const pill = $('#statusPill');
@@ -545,8 +556,8 @@
   function mockApi() {
     const pics = {};
     let theme = null;
-    let adblock = true;
-    const status = () => ({ adblock, installed: !!theme, enabled: !!(theme && theme.on), name: theme && theme.on ? theme.name : null, version: '1.0.0', needsReload: false, dir: 'C:\\Users\\you\\Documents\\Gel\\YouTube extension', themes: T.THEMES.length, browsers: theme ? ['Opera'] : [] });
+    let adblock = true, boost = true;
+    const status = () => ({ adblock, boost, installed: !!theme, enabled: !!(theme && theme.on), name: theme && theme.on ? theme.name : null, version: '1.0.0', needsReload: false, dir: 'C:\\Users\\you\\Documents\\Gel\\YouTube extension', themes: T.THEMES.length, browsers: theme ? ['Opera'] : [] });
     return {
       status: async () => status(),
       apply: async p => { theme = { on: true, name: T.buildTheme(presetOf(p.presetId), p.custom).name }; return { ok: true, message: 'Preview mode: open Gel as a desktop app to change YouTube.', status: status() }; },
@@ -558,6 +569,7 @@
       clearPicture: async kind => { delete pics[kind]; return { ok: true }; },
       ackReload: async () => ({ ok: true, status: status() }),
       setAdblock: async on => { adblock = !!on; return { ok: true, status: status() }; },
+      setBoost: async on => { boost = !!on; return { ok: true, status: status() }; },
     };
   }
 })();

@@ -117,3 +117,46 @@ test('buildTheme ignores colours that are not colours', () => {
   assert.equal(t.palette.accent, '#FF5FA2');
   assert.equal(t.palette.bg, '#123456');
 });
+
+test('the video player and its menus follow the theme', () => {
+  const css = core.pageCss(theme, { frame: 'top' });
+  for (const sel of ['.ytp-volume-slider-handle', '.ytp-large-play-button', '.ytp-autonav-toggle-button[aria-checked="true"]', '.ytp-popup', '.ytp-menuitem:hover', '.ytp-tooltip-text']) {
+    assert.ok(css.includes(sel), sel);
+  }
+  assert.match(css, /\.ytp-popup[^{]*\{[^}]*backdrop-filter/);
+});
+
+test('cinema mode is on by default and dims everything but the player', () => {
+  assert.equal(require('../src/youtube/themes.js').defaultLayout().cinema, true);
+  const css = core.pageCss(theme, { frame: 'top' });
+  const dim = css.split('\n').filter((l) => l.startsWith('html.gel-cinema') && /opacity: 0\.15/.test(l));
+  assert.ok(dim.length > 0, 'has a dimming rule');
+  for (const l of dim) {
+    for (const part of l.split('{')[0].split(',')) assert.doesNotMatch(part, /movie_player|ytd-player|#player\b/, part);
+  }
+  assert.match(css, /html\.gel-cinema[^{]*#movie_player[^{]*\{[^}]*box-shadow/);
+});
+
+test('cinema mode can be switched off', () => {
+  const off = buildTheme(THEMES[0], { layout: { cinema: false } });
+  assert.doesNotMatch(core.pageCss(off, { frame: 'top' }), /gel-cinema/);
+});
+
+test('the search box gets a glowing accent ring when you type in it', () => {
+  const css = core.pageCss(theme, { frame: 'top' });
+  assert.match(css, /ytSearchboxComponentInputBoxHasFocus[^{]*\{[^}]*box-shadow[^}]*255, 95, 162/);
+  assert.match(css, /ytSearchboxComponentSearchButton[^{]*\{[^}]*linear-gradient/);
+});
+
+test('the selected filter chip and Subscribe use the accent gradient', () => {
+  const css = core.pageCss(theme, { frame: 'top' });
+  assert.match(css, /ytChipShapeActive[^{]*\{[^}]*linear-gradient\(135deg, #FF5FA2, #9B6BFF\)/);
+  assert.match(css, /ytd-subscribe-button-renderer[^{]*\{[^}]*linear-gradient\(135deg, #FF5FA2, #9B6BFF\)/);
+});
+
+test('the volume boost panel gets the theme colours and fonts', () => {
+  const css = core.pageCss(theme, { frame: 'top' });
+  assert.match(css, /:root \{[^}]*--gel-on-accent: #06050D;/);
+  assert.match(css, /:root \{[^}]*--gel-menu: #2D2A3A;/);
+  assert.match(css, /\.gel-boost-pop[^{]*\{[^}]*font-family: 'Gel Outfit'/);
+});
