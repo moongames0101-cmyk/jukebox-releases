@@ -165,13 +165,15 @@ function setAdblock(outDir, adblock) {
 function readStatus(outDir) {
   const s = { installed: false, enabled: false, name: null, version: null, needsReload: false };
   try { s.version = JSON.parse(fs.readFileSync(path.join(outDir, 'manifest.json'), 'utf8')).version || null; } catch (e) { return s; }
-  s.installed = Object.keys(CODE).every((f) => fs.existsSync(path.join(outDir, f)));
+  // An extension an older Gel made counts too (it may lack newer files): refreshing brings it up to date.
+  s.installed = fs.existsSync(path.join(outDir, 'gel-yt.js'));
+  s.needsReload = Object.keys(CODE).some((f) => !fs.existsSync(path.join(outDir, f)));
   try {
     const t = JSON.parse(fs.readFileSync(path.join(outDir, 'theme.json'), 'utf8'));
     s.enabled = !!t.enabled;
     s.name = t.enabled ? t.name || null : null;
   } catch (e) { /* no theme yet */ }
-  s.needsReload = fs.existsSync(path.join(outDir, RELOAD_FLAG));
+  s.needsReload = s.needsReload || fs.existsSync(path.join(outDir, RELOAD_FLAG));
   return s;
 }
 

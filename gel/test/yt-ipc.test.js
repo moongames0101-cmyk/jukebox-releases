@@ -174,3 +174,23 @@ test('turning ads on before the extension exists makes it, with the theme off', 
   assert.equal(readTheme().adblock, true);
   assert.equal(res.status.installed, true);
 });
+
+test('refreshing brings an extension made by an older Gel up to date', async () => {
+  await call('youtube:apply', { presetId: 'galaxy', custom: {} });
+  // What Gel 1.3.6 and older left behind: no ad-blocker files, manifest 1.0.0.
+  fs.rmSync(path.join(extDir, 'gel-ads.js'));
+  fs.rmSync(path.join(extDir, 'gel-ads-main.js'));
+  const mf = path.join(extDir, 'manifest.json');
+  const m = JSON.parse(fs.readFileSync(mf, 'utf8'));
+  m.version = '1.0.0';
+  m.content_scripts = m.content_scripts.filter((c) => !c.world).map((c) => Object.assign(c, { js: ['fx-engine.js', 'yt-core.js', 'gel-yt.js'] }));
+  fs.writeFileSync(mf, JSON.stringify(m));
+  assert.equal((await call('youtube:status')).installed, true);
+  yt.refresh();
+  assert.ok(fs.existsSync(path.join(extDir, 'gel-ads.js')));
+  assert.ok(fs.existsSync(path.join(extDir, 'gel-ads-main.js')));
+  assert.equal(JSON.parse(fs.readFileSync(mf, 'utf8')).version, '1.1.0');
+  assert.equal(readTheme().name, 'Galaxy');
+  assert.equal(readTheme().adblock, true);
+  assert.equal((await call('youtube:status')).needsReload, true);
+});
